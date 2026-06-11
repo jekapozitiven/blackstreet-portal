@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Трекер відгуків</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgdmlld0JveD0iMCAwIDUwMCA1MDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwYTBhMGE7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6IzFhMWExYTtzdG9wLW9wYWNpdHk6MSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdvbGRHcmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I2M5YTg0YztzdG9wLW9wYWNpdHk6MSIgLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmMGQwODA7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I2E4NzYyYTtzdG9wLW9wYWNpdHk6MSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdvbGRHcmFkMiIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjBkMDgwO3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNiODg4MmU7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8Y2lyY2xlIGN4PSIyNTAiIGN5PSIyNTAiIHI9IjI1MCIgZmlsbD0idXJsKCNiZ0dyYWQpIi8+CiAgPGNpcmNsZSBjeD0iMjUwIiBjeT0iMjUwIiByPSIyMzUiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNnb2xkR3JhZCkiIHN0cm9rZS13aWR0aD0iMi41Ii8+CiAgPHRleHQgeD0iMjUwIiB5PSIyMzAiIGZvbnQtZmFtaWx5PSJHZW9yZ2lhLHNlcmlmIiBmb250LXNpemU9IjE0OCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0idXJsKCNnb2xkR3JhZDIpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iLTQiPkJCQjwvdGV4dD4KICA8bGluZSB4MT0iMTA1IiB5MT0iMjY4IiB4Mj0iMzk1IiB5Mj0iMjY4IiBzdHJva2U9InVybCgjZ29sZEdyYWQpIiBzdHJva2Utd2lkdGg9IjEuNSIvPgogIDx0ZXh0IHg9IjI1MCIgeT0iMzE4IiBmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzOCIgZm9udC13ZWlnaHQ9IjMwMCIgZmlsbD0idXJsKCNnb2xkR3JhZCkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGxldHRlci1zcGFjaW5nPSIxOCI+Q0xVQjwvdGV4dD4KPC9zdmc+">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #222536;
+  --border: #2e3148;
+  --accent: #6c63ff;
+  --green: #4ade80;
+  --red: #f87171;
+  --yellow: #fbbf24;
+  --text: #f0f0f5;
+  --muted: #8b8fa8;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* NAV */
+.nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-title {
+  font-weight: 700;
+  font-size: 16px;
+  margin-right: 16px;
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* PAGES */
+.page { display: none; padding: 24px; }
+.page.active { display: block; }
+
+/* CARD */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 16px;
+}
+
+/* FORM */
+.form-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.form-group { flex: 1; min-width: 130px; }
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+select, input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+select:focus, input:focus { border-color: var(--accent); }
+select option { background: var(--surface2); }
+
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-sm { font-size: 12px; padding: 6px 12px; border-radius: 6px; }
+.btn-green { background: var(--green); color: #000; }
+.btn-red { background: var(--red); }
+.btn-gray { background: var(--surface2); color: var(--muted); }
+
+/* ALERTS */
+.alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-top: 10px;
+}
+.alert.success { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+.alert.error { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+.alert.info { background: rgba(108,99,255,0.15); color: #a8a4ff; border: 1px solid rgba(108,99,255,0.3); }
+
+/* FILTERS */
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.filter-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+
+/* ROW COLORS */
+tr.row-red td { background: rgba(248,113,113,0.07); }
+tr.row-red:hover td { background: rgba(248,113,113,0.12); }
+tr.row-green td { background: rgba(74,222,128,0.07); }
+tr.row-green:hover td { background: rgba(74,222,128,0.12); }
+tr.row-normal:hover td { background: var(--surface2); }
+
+/* BADGES */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-red { background: rgba(248,113,113,0.2); color: var(--red); }
+.badge-green { background: rgba(74,222,128,0.2); color: var(--green); }
+.badge-yellow { background: rgba(251,191,36,0.2); color: var(--yellow); }
+.badge-purple { background: rgba(108,99,255,0.2); color: #a8a4ff; }
+
+.shop-tag {
+  display: inline-block;
+  background: rgba(108,99,255,0.15);
+  color: #a8a4ff;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* STATS PAGE */
+.stats-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-box {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-lbl {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.stat-num.purple { color: var(--accent); }
+.stat-num.red { color: var(--red); }
+.stat-num.green { color: var(--green); }
+.stat-num.yellow { color: var(--yellow); }
+
+/* MANAGER CARDS */
+.manager-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.manager-card {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+}
+
+.manager-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.manager-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.manager-row span:last-child { font-weight: 600; color: var(--text); }
+
+.progress-wrap {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.progress-lbl {
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 45px;
+  text-align: right;
+}
+
+/* SPINNER */
+.spinner {
+  display: inline-block;
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* CONFIG */
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+/* DATE INPUTS */
+.date-range {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.date-range input[type="date"] {
+  width: auto;
+  flex: 1;
+  min-width: 130px;
+}
+
+@media (max-width: 600px) {
+  .nav { padding: 0 12px; gap: 4px; }
+  .page { padding: 12px; }
+  .form-group { min-width: 100%; }
+  .stats-top { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  margin: 16px;
+}
+.modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>✏️ Редагувати замовлення</h3>
+    <input type="hidden" id="edit-id" />
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Менеджер</label>
+      <select id="edit-manager">
+        <option>Марина</option>
+        <option>Поліна</option>
+        <option>Софія</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Магазин</label>
+      <select id="edit-shop">
+        <option value="black_street">Black Street</option>
+        <option value="bonna_shop">Bonna-shop</option>
+        <option value="core22">Core22</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Коментар / примітка</label>
+      <input type="text" id="edit-comment" placeholder="Коментар..." />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gray btn-sm" onclick="closeModal()">Скасувати</button>
+      <button class="btn btn-sm" onclick="saveEdit()">Зберегти</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER CALLS MODAL -->
+<div class="modal-overlay" id="order-calls-modal">
+  <div class="modal" style="max-width:480px">
+    <h3>📞 Дзвінки — <span id="ocm-order"></span></h3>
+    <input type="hidden" id="ocm-id" />
+    <div id="ocm-list" style="margin-bottom:14px;max-height:240px;overflow-y:auto"></div>
+    <div style="background:var(--surface2);border-radius:10px;padding:14px">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Хто дзвонив</label>
+          <select id="ocm-manager">
+            <option>Марина</option>
+            <option>Поліна</option>
+            <option>Софія</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Результат</label>
+          <select id="ocm-result">
+            <option value="no_answer">📵 Не відповів</option>
+            <option value="promised">🤝 Обіцяв залишити</option>
+            <option value="refused">❌ Відмовився</option>
+            <option value="left">✅ Залишив відгук</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:10px">
+        <label>Коментар</label>
+        <input type="text" id="ocm-comment" placeholder="Що сказав клієнт..." />
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-sm" onclick="saveOrderCall()">Зберегти</button>
+        <button class="btn btn-sm btn-gray" onclick="closeOrderCalls()">Закрити</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <span class="nav-title">📋 Трекер відгуків</span>
+  <button class="nav-tab active" onclick="showPage('orders', this)">📦 Замовлення</button>
+  <button class="nav-tab" onclick="showPage('stats', this)">📊 Статистика</button>
+  <button class="nav-tab" onclick="showPage('negative', this)">⚠️ Негативні</button>
+</nav>
+
+<!-- ==================== PAGE: ORDERS ==================== -->
+<div class="page active" id="page-orders">
+
+  <!-- Add form -->
+  <div class="card">
+    <div class="card-title">➕ Додати замовлення</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Менеджер</label>
+        <select id="f-manager">
+          <option>Марина</option>
+          <option>Поліна</option>
+          <option>Софія</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Магазин</label>
+        <select id="f-shop">
+          <option value="black_street">Black Street</option>
+          <option value="bonna_shop">Bonna-shop</option>
+          <option value="core22">Core22</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Номер замовлення</label>
+        <input type="text" id="f-order" placeholder="напр. 408063699" />
+      </div>
+      <div class="form-group" style="flex:2; min-width:180px">
+        <label>Коментар / примітка</label>
+        <input type="text" id="f-comment" placeholder="напр. просив передзвонити, зацікавлений..." />
+      </div>
+      <div>
+        <button class="btn" id="add-btn" onclick="addOrder()">Додати</button>
+      </div>
+    </div>
+    <div id="add-msg"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card" style="padding:14px 20px">
+    <div class="filters">
+      <span style="font-size:12px;color:var(--muted);margin-right:4px">Менеджер:</span>
+      <button class="filter-btn active" onclick="setFilter('manager','all',this)">Всі</button>
+      <button class="filter-btn" onclick="setFilter('manager','Марина',this)">Марина</button>
+      <button class="filter-btn" onclick="setFilter('manager','Поліна',this)">Поліна</button>
+      <button class="filter-btn" onclick="setFilter('manager','Софія',this)">Софія</button>
+    </div>
+    <div class="filters">
+      <span style="font-size:12px;color:var(--muted);margin-right:4px">Магазин:</span>
+      <button class="filter-btn active" onclick="setFilter('shop','all',this)">Всі</button>
+      <button class="filter-btn" onclick="setFilter('shop','black_street',this)">Black Street</button>
+      <button class="filter-btn" onclick="setFilter('shop','bonna_shop',this)">Bonna-shop</button>
+      <button class="filter-btn" onclick="setFilter('shop','core22',this)">Core22</button>
+    </div>
+    <div class="filters">
+      <span style="font-size:12px;color:var(--muted);margin-right:4px">Статус:</span>
+      <button class="filter-btn active" onclick="setFilter('status','all',this)">Всі</button>
+      <button class="filter-btn" onclick="setFilter('status','pending',this)">⏳ Очікують</button>
+      <button class="filter-btn" onclick="setFilter('status','done',this)">✅ Є відгук</button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0">Список замовлень</div>
+      <button class="btn btn-sm btn-gray" onclick="clearDone()">🗑 Очистити з відгуками</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>№ Замовлення</th>
+            <th>Магазин</th>
+            <th>Менеджер</th>
+            <th>Коментар</th>
+            <th>Прозвонили</th>
+            <th>Статус</th>
+            <th>Відгук залишено</th>
+            <th>Дії</th>
+          </tr>
+        </thead>
+        <tbody id="orders-body"></tbody>
+      </table>
+      <div class="empty" id="orders-empty" style="display:none">Немає замовлень</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: STATS ==================== -->
+<div class="page" id="page-stats">
+
+  <!-- Filters -->
+  <div class="card" style="padding:14px 20px">
+    <div class="form-row" style="align-items:flex-end">
+      <div class="form-group">
+        <label>Менеджер</label>
+        <select id="s-manager" onchange="renderStats()">
+          <option value="all">Всі менеджери</option>
+          <option>Марина</option>
+          <option>Поліна</option>
+          <option>Софія</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Магазин</label>
+        <select id="s-shop" onchange="renderStats()">
+          <option value="all">Всі магазини</option>
+          <option value="black_street">Black Street</option>
+          <option value="bonna_shop">Bonna-shop</option>
+          <option value="core22">Core22</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Від</label>
+        <input type="date" id="s-from" onchange="renderStats()" />
+      </div>
+      <div class="form-group">
+        <label>До</label>
+        <input type="date" id="s-to" onchange="renderStats()" />
+      </div>
+      <div>
+        <button class="btn btn-sm btn-gray" onclick="resetStatsFilters()">Скинути</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top stats -->
+  <div class="stats-top" id="stats-top"></div>
+
+  <!-- Manager cards -->
+  <div class="card">
+    <div class="card-title">По менеджерах</div>
+    <div class="manager-grid" id="stats-managers"></div>
+  </div>
+
+  <!-- Shop stats -->
+  <div class="card">
+    <div class="card-title">По магазинах</div>
+    <div class="manager-grid" id="stats-shops"></div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: NEGATIVE ==================== -->
+<div class="page" id="page-negative">
+
+  <!-- Add form -->
+  <div class="card">
+    <div class="card-title">➕ Додати негативний відгук</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Хто додає</label>
+        <select id="n-manager">
+          <option>Марина</option>
+          <option>Поліна</option>
+          <option>Софія</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Магазин</label>
+        <select id="n-shop">
+          <option value="black_street">Black Street</option>
+          <option value="bonna_shop">Bonna-shop</option>
+          <option value="core22">Core22</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Номер замовлення</label>
+        <input type="text" id="n-order" placeholder="напр. 408063699" />
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:10px">
+      <div class="form-group" style="flex:3">
+        <label>Текст поганого відгуку</label>
+        <input type="text" id="n-review" placeholder="Що написав клієнт у відгуку..." />
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>Коментар</label>
+        <input type="text" id="n-comment" placeholder="Примітка..." />
+      </div>
+      <div>
+        <button class="btn" onclick="addNegative()" style="background:var(--red)">Додати</button>
+      </div>
+    </div>
+    <div id="n-msg"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card" style="padding:14px 20px">
+    <div class="filters">
+      <span style="font-size:12px;color:var(--muted);margin-right:4px">Статус:</span>
+      <button class="filter-btn active" onclick="setNFilter('status','all',this)">Всі</button>
+      <button class="filter-btn" onclick="setNFilter('status','open',this)">🔴 В роботі</button>
+      <button class="filter-btn" onclick="setNFilter('status','resolved',this)">✅ Вирішено</button>
+    </div>
+    <div class="filters">
+      <span style="font-size:12px;color:var(--muted);margin-right:4px">Магазин:</span>
+      <button class="filter-btn active" onclick="setNFilter('shop','all',this)">Всі</button>
+      <button class="filter-btn" onclick="setNFilter('shop','black_street',this)">Black Street</button>
+      <button class="filter-btn" onclick="setNFilter('shop','bonna_shop',this)">Bonna-shop</button>
+      <button class="filter-btn" onclick="setNFilter('shop','core22',this)">Core22</button>
+    </div>
+  </div>
+
+  <!-- Stats mini -->
+  <div class="stats-top" id="neg-stats-top" style="margin-bottom:16px"></div>
+
+  <!-- Manager stats -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">По менеджерах</div>
+    <div class="manager-grid" id="neg-manager-stats"></div>
+  </div>
+
+  <!-- Cards list -->
+  <div id="neg-list"></div>
+</div>
+
+<!-- CALL LOG MODAL -->
+<div class="modal-overlay" id="call-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>📞 Журнал дзвінків — <span id="call-modal-order"></span></h3>
+    <input type="hidden" id="call-neg-id" />
+
+    <div id="call-log-list" style="margin-bottom:16px;max-height:280px;overflow-y:auto"></div>
+
+    <div style="background:var(--surface2);border-radius:10px;padding:14px">
+      <div class="card-title" style="margin-bottom:12px">➕ Новий дзвінок</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Хто дзвонив</label>
+          <select id="call-manager">
+            <option>Марина</option>
+            <option>Поліна</option>
+            <option>Софія</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Результат</label>
+          <select id="call-result">
+            <option value="no_answer">Не відповів</option>
+            <option value="talked">Поговорили</option>
+            <option value="agreed">Погодився видалити</option>
+            <option value="refused">Відмовився</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:10px">
+        <label>Коментар до дзвінка</label>
+        <input type="text" id="call-comment" placeholder="Що сказав клієнт..." />
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="addCallLog()">Зберегти дзвінок</button>
+        <button class="btn btn-sm btn-green" onclick="resolveNegative()">✅ Відгук видалено/вирішено</button>
+        <button class="btn btn-sm btn-gray" onclick="closeCallModal()">Закрити</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== CONSTANTS ==========
+const MANAGERS = ['Марина', 'Поліна', 'Софія'];
+const SHOPS = {
+  black_street: 'Black Street',
+  bonna_shop: 'Bonna-shop',
+  core22: 'Core22'
+};
+
+const CALL_RESULTS = {
+  no_answer: '📵 Не відповів',
+  talked: '💬 Поговорили',
+  agreed: '🤝 Погодився видалити',
+  refused: '❌ Відмовився'
+};
+
+// ========== STORAGE ==========
+const getOrders = () => { try { return JSON.parse(localStorage.getItem('rt_orders') || '[]'); } catch { return []; } };
+const saveOrders = d => localStorage.setItem('rt_orders', JSON.stringify(d));
+const getNegative = () => { try { return JSON.parse(localStorage.getItem('rt_negative') || '[]'); } catch { return []; } };
+const saveNegative = d => localStorage.setItem('rt_negative', JSON.stringify(d));
+
+// ========== FILTERS STATE ==========
+const filters = { manager: 'all', shop: 'all', status: 'all' };
+
+function setFilter(type, val, el) {
+  filters[type] = val;
+  el.closest('.filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderOrders();
+}
+
+// ========== NAVIGATION ==========
+function showPage(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  el.classList.add('active');
+  if (page === 'stats') renderStats();
+  if (page === 'negative') renderNegative();
+}
+
+// ========== ADD ORDER ==========
+function addOrder() {
+  const manager = document.getElementById('f-manager').value;
+  const shop = document.getElementById('f-shop').value;
+  const orderId = document.getElementById('f-order').value.trim().replace(/\D/g, '');
+  const comment = document.getElementById('f-comment').value.trim();
+  const msgEl = document.getElementById('add-msg');
+
+  if (!orderId) { msgEl.innerHTML = '<div class="alert error">Введіть номер замовлення</div>'; return; }
+
+  const orders = getOrders();
+  if (orders.find(o => o.orderId === orderId && o.shop === shop)) {
+    msgEl.innerHTML = '<div class="alert error">Це замовлення вже додано</div>'; return;
+  }
+
+  orders.push({
+    id: Date.now().toString(),
+    orderId,
+    shop,
+    manager,
+    comment,
+    hasReview: false,
+    reviewDate: null,
+    calledAt: new Date().toISOString()
+  });
+
+  saveOrders(orders);
+  document.getElementById('f-order').value = '';
+  document.getElementById('f-comment').value = '';
+  msgEl.innerHTML = '<div class="alert success">✅ Замовлення додано!</div>';
+  renderOrders();
+  setTimeout(() => msgEl.innerHTML = '', 3000);
+}
+
+// ========== MARK REVIEW ==========
+function markReview(id) {
+  const orders = getOrders();
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx === -1) return;
+  orders[idx].hasReview = true;
+  orders[idx].reviewDate = new Date().toISOString();
+  saveOrders(orders);
+  renderOrders();
+}
+
+function unmarkReview(id) {
+  const orders = getOrders();
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx === -1) return;
+  orders[idx].hasReview = false;
+  orders[idx].reviewDate = null;
+  saveOrders(orders);
+  renderOrders();
+}
+
+function deleteOrder(id) {
+  if (!confirm('Видалити замовлення?')) return;
+  saveOrders(getOrders().filter(o => o.id !== id));
+  renderOrders();
+}
+
+function clearDone() {
+  if (!confirm('Видалити всі замовлення з відгуками?')) return;
+  saveOrders(getOrders().filter(o => !o.hasReview));
+  renderOrders();
+}
+
+// ========== FORMAT ==========
+const fmtDate = iso => iso ? new Date(iso).toLocaleString('uk', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+const fmtDateShort = iso => iso ? new Date(iso).toLocaleString('uk', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+
+// ========== RENDER ORDERS ==========
+function renderOrders() {
+  let data = getOrders();
+
+  if (filters.manager !== 'all') data = data.filter(o => o.manager === filters.manager);
+  if (filters.shop !== 'all') data = data.filter(o => o.shop === filters.shop);
+  if (filters.status === 'pending') data = data.filter(o => !o.hasReview);
+  if (filters.status === 'done') data = data.filter(o => o.hasReview);
+
+  data.sort((a,b) => new Date(b.calledAt) - new Date(a.calledAt));
+
+  const tbody = document.getElementById('orders-body');
+  const empty = document.getElementById('orders-empty');
+
+  if (!data.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = data.map(o => {
+    const rowClass = o.hasReview ? 'row-green' : 'row-red';
+    const statusBadge = o.hasReview
+      ? `<span class="badge badge-green">✅ Є відгук</span>`
+      : `<span class="badge badge-red">⏳ Очікує</span>`;
+
+    const actions = o.hasReview
+      ? `<button class="btn btn-sm btn-gray" onclick="unmarkReview('${o.id}')" title="Скасувати">↩</button>`
+      : `<button class="btn btn-sm btn-green" onclick="markReview('${o.id}')">✅ Відгук є</button>`;
+
+    return `<tr class="${rowClass}">
+      <td><strong>#${o.orderId}</strong></td>
+      <td><span class="shop-tag">${SHOPS[o.shop]}</span></td>
+      <td>${o.manager}</td>
+      <td style="font-size:12px;color:var(--muted);max-width:200px">${o.comment || '—'}</td>
+      <td style="font-size:12px;color:var(--muted)">${fmtDateShort(o.calledAt)}</td>
+      <td>${statusBadge}</td>
+      <td style="font-size:12px;color:var(--green)">${o.hasReview ? fmtDateShort(o.reviewDate) : '—'}</td>
+      <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        ${actions}
+        <button class="btn btn-sm" style="background:var(--surface2);color:#a8a4ff" onclick="openOrderCalls('${o.id}')">📞${(o.calls||[]).length ? ' '+o.calls.length : ''}</button>
+        <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="openEdit('${o.id}')">✏️</button>
+        <button class="btn btn-sm btn-red" onclick="deleteOrder('${o.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ========== STATS ==========
+function resetStatsFilters() {
+  document.getElementById('s-manager').value = 'all';
+  document.getElementById('s-shop').value = 'all';
+  document.getElementById('s-from').value = '';
+  document.getElementById('s-to').value = '';
+  renderStats();
+}
+
+function getStatsData() {
+  let data = getOrders();
+  const manager = document.getElementById('s-manager').value;
+  const shop = document.getElementById('s-shop').value;
+  const from = document.getElementById('s-from').value;
+  const to = document.getElementById('s-to').value;
+
+  if (manager !== 'all') data = data.filter(o => o.manager === manager);
+  if (shop !== 'all') data = data.filter(o => o.shop === shop);
+  if (from) data = data.filter(o => new Date(o.calledAt) >= new Date(from));
+  if (to) data = data.filter(o => new Date(o.calledAt) <= new Date(to + 'T23:59:59'));
+  return data;
+}
+
+function renderStats() {
+  const data = getStatsData();
+  const total = data.length;
+  const done = data.filter(o => o.hasReview).length;
+  const pending = data.filter(o => !o.hasReview).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+
+  // Top boxes
+  document.getElementById('stats-top').innerHTML = `
+    <div class="stat-box"><div class="stat-num purple">${total}</div><div class="stat-lbl">Всього прозвонено</div></div>
+    <div class="stat-box"><div class="stat-num red">${pending}</div><div class="stat-lbl">Очікують відгук</div></div>
+    <div class="stat-box"><div class="stat-num green">${done}</div><div class="stat-lbl">Відгуків отримано</div></div>
+    <div class="stat-box"><div class="stat-num yellow">${pct}%</div><div class="stat-lbl">Конверсія</div></div>
+  `;
+
+  // Manager cards
+  const selectedManager = document.getElementById('s-manager').value;
+  const mgrs = selectedManager === 'all' ? MANAGERS : [selectedManager];
+
+  document.getElementById('stats-managers').innerHTML = mgrs.map(m => {
+    const md = data.filter(o => o.manager === m);
+    const mDone = md.filter(o => o.hasReview).length;
+    const mPending = md.filter(o => !o.hasReview).length;
+    const mPct = md.length ? Math.round(mDone/md.length*100) : 0;
+    const bonusPct = Math.min(mDone, 100);
+    const bonusLabel = mDone >= 100 ? '🎉 Бонус досягнуто!' : `${mDone}/100 до бонусу`;
+
+    return `<div class="manager-card">
+      <div class="manager-name">👤 ${m}</div>
+      <div class="manager-row"><span>Прозвонено</span><span>${md.length}</span></div>
+      <div class="manager-row"><span>Очікують відгук</span><span style="color:var(--red)">${mPending}</span></div>
+      <div class="manager-row"><span>Відгуків отримано</span><span style="color:var(--green)">${mDone}</span></div>
+      <div class="manager-row"><span>Конверсія</span><span style="color:var(--yellow)">${mPct}%</span></div>
+      <div class="manager-row"><span>Бонус</span><span style="color:var(--yellow)">${bonusLabel}</span></div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" style="width:${bonusPct}%"></div></div>
+        <div class="progress-lbl">${bonusPct}/100</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Shop cards
+  const selectedShop = document.getElementById('s-shop').value;
+  const shopKeys = selectedShop === 'all' ? Object.keys(SHOPS) : [selectedShop];
+
+  document.getElementById('stats-shops').innerHTML = shopKeys.map(sk => {
+    const sd = data.filter(o => o.shop === sk);
+    const sDone = sd.filter(o => o.hasReview).length;
+    const sPending = sd.filter(o => !o.hasReview).length;
+    const sPct = sd.length ? Math.round(sDone/sd.length*100) : 0;
+
+    return `<div class="manager-card">
+      <div class="manager-name">🏪 ${SHOPS[sk]}</div>
+      <div class="manager-row"><span>Прозвонено</span><span>${sd.length}</span></div>
+      <div class="manager-row"><span>Очікують відгук</span><span style="color:var(--red)">${sPending}</span></div>
+      <div class="manager-row"><span>Відгуків отримано</span><span style="color:var(--green)">${sDone}</span></div>
+      <div class="manager-row"><span>Конверсія</span><span style="color:var(--yellow)">${sPct}%</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ========== CONFIG ==========
+function initConfig() {
+  const keys = getKeys();
+  document.getElementById('config-fields').innerHTML = Object.entries(SHOPS).map(([k, name]) => `
+    <div>
+      <label>${name}</label>
+      <input type="password" id="key-${k}" placeholder="API ключ для ${name}" value="${keys[k] || ''}" />
+    </div>
+  `).join('');
+}
+
+// ========== ORDER CALLS MODAL ==========
+const ORDER_CALL_RESULTS = {
+  no_answer: '📵 Не відповів',
+  promised: '🤝 Обіцяв залишити',
+  refused: '❌ Відмовився',
+  left: '✅ Залишив відгук'
+};
+
+function openOrderCalls(id) {
+  const order = getOrders().find(o => o.id === id);
+  if (!order) return;
+  document.getElementById('ocm-id').value = id;
+  document.getElementById('ocm-order').textContent = '#' + order.orderId;
+  document.getElementById('ocm-comment').value = '';
+  renderOrderCallsList(order);
+  document.getElementById('order-calls-modal').classList.add('open');
+}
+
+function renderOrderCallsList(order) {
+  const calls = order.calls || [];
+  const el = document.getElementById('ocm-list');
+  if (!calls.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:4px 0">Дзвінків ще немає</div>';
+    return;
+  }
+  el.innerHTML = calls.map((c, i) => `
+    <div style="padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:600">${i+1}. ${c.manager} <span style="color:var(--muted);font-weight:400;font-size:12px">· ${fmtDateShort(c.date)}</span></div>
+      <div style="font-size:12px;margin-top:3px">${ORDER_CALL_RESULTS[c.result] || c.result}</div>
+      ${c.comment ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${c.comment}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function saveOrderCall() {
+  const id = document.getElementById('ocm-id').value;
+  const manager = document.getElementById('ocm-manager').value;
+  const result = document.getElementById('ocm-result').value;
+  const comment = document.getElementById('ocm-comment').value.trim();
+
+  const orders = getOrders();
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx === -1) return;
+
+  if (!orders[idx].calls) orders[idx].calls = [];
+  orders[idx].calls.push({ manager, result, comment, date: new Date().toISOString() });
+  saveOrders(orders);
+
+  document.getElementById('ocm-comment').value = '';
+  renderOrderCallsList(orders[idx]);
+  renderOrders();
+}
+
+function closeOrderCalls() {
+  document.getElementById('order-calls-modal').classList.remove('open');
+}
+
+document.getElementById('order-calls-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeOrderCalls();
+});
+
+// ========== EDIT MODAL ==========
+function openEdit(id) {
+  const order = getOrders().find(o => o.id === id);
+  if (!order) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-manager').value = order.manager;
+  document.getElementById('edit-shop').value = order.shop;
+  document.getElementById('edit-comment').value = order.comment || '';
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+function saveEdit() {
+  const id = document.getElementById('edit-id').value;
+  const orders = getOrders();
+  const idx = orders.findIndex(o => o.id === id);
+  if (idx === -1) return;
+  orders[idx].manager = document.getElementById('edit-manager').value;
+  orders[idx].shop = document.getElementById('edit-shop').value;
+  orders[idx].comment = document.getElementById('edit-comment').value.trim();
+  saveOrders(orders);
+  closeModal();
+  renderOrders();
+}
+
+// Close modal on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ========== NEGATIVE REVIEWS ==========
+const nFilters = { status: 'all', shop: 'all' };
+
+function setNFilter(type, val, el) {
+  nFilters[type] = val;
+  el.closest('.filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderNegative();
+}
+
+function addNegative() {
+  const manager = document.getElementById('n-manager').value;
+  const shop = document.getElementById('n-shop').value;
+  const orderId = document.getElementById('n-order').value.trim().replace(/\D/g,'');
+  const review = document.getElementById('n-review').value.trim();
+  const comment = document.getElementById('n-comment').value.trim();
+  const msgEl = document.getElementById('n-msg');
+
+  if (!orderId) { msgEl.innerHTML = '<div class="alert error">Введіть номер замовлення</div>'; return; }
+  if (!review) { msgEl.innerHTML = '<div class="alert error">Введіть текст відгуку</div>'; return; }
+
+  const list = getNegative();
+  list.push({
+    id: Date.now().toString(),
+    orderId, shop, manager, review, comment,
+    resolved: false,
+    resolvedAt: null,
+    addedAt: new Date().toISOString(),
+    calls: []
+  });
+
+  saveNegative(list);
+  document.getElementById('n-order').value = '';
+  document.getElementById('n-review').value = '';
+  document.getElementById('n-comment').value = '';
+  msgEl.innerHTML = '<div class="alert success">✅ Додано!</div>';
+  setTimeout(() => msgEl.innerHTML = '', 3000);
+  renderNegative();
+}
+
+function deleteNegative(id) {
+  if (!confirm('Видалити?')) return;
+  saveNegative(getNegative().filter(o => o.id !== id));
+  renderNegative();
+}
+
+function renderNegative() {
+  const allData = getNegative();
+
+  // Top stats (always all data)
+  const total = allData.length;
+  const open = allData.filter(o => !o.resolved).length;
+  const resolved = allData.filter(o => o.resolved).length;
+  document.getElementById('neg-stats-top').innerHTML = `
+    <div class="stat-box"><div class="stat-num red">${total}</div><div class="stat-lbl">Всього негативних</div></div>
+    <div class="stat-box"><div class="stat-num yellow">${open}</div><div class="stat-lbl">В роботі</div></div>
+    <div class="stat-box"><div class="stat-num green">${resolved}</div><div class="stat-lbl">Вирішено</div></div>
+  `;
+
+  // Manager stats
+  document.getElementById('neg-manager-stats').innerHTML = MANAGERS.map(m => {
+    const mResolved = allData.filter(o => o.resolved && o.resolvedBy === m).length;
+    const mCalls = allData.reduce((sum, o) => sum + o.calls.filter(c => c.manager === m).length, 0);
+    const pct = resolved ? Math.round(mResolved / resolved * 100) : 0;
+    return `<div class="manager-card">
+      <div class="manager-name">👤 ${m}</div>
+      <div class="manager-row"><span>Зроблено дзвінків</span><span>${mCalls}</span></div>
+      <div class="manager-row"><span>Вирішено відгуків</span><span style="color:var(--green)">${mResolved}</span></div>
+      <div class="manager-row"><span>% від усіх вирішених</span><span style="color:var(--yellow)">${pct}%</span></div>
+    </div>`;
+  }).join('');
+
+  // Filtered data for list
+  let data = [...allData];
+  if (nFilters.status === 'open') data = data.filter(o => !o.resolved);
+  if (nFilters.status === 'resolved') data = data.filter(o => o.resolved);
+  if (nFilters.shop !== 'all') data = data.filter(o => o.shop === nFilters.shop);
+  data.sort((a,b) => new Date(b.addedAt) - new Date(a.addedAt));
+
+  const list = document.getElementById('neg-list');
+  if (!data.length) { list.innerHTML = '<div class="empty">Немає записів</div>'; return; }
+
+  list.innerHTML = data.map(o => {
+    const borderColor = o.resolved ? 'var(--green)' : 'var(--red)';
+    const lastCall = o.calls.length ? o.calls[o.calls.length-1] : null;
+
+    const callsHtml = o.calls.map((c,i) => `
+      <div style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="min-width:20px;color:var(--muted);font-size:12px">${i+1}.</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${c.manager} <span style="color:var(--muted);font-weight:400;font-size:12px">— ${fmtDateShort(c.date)}</span></div>
+          <div style="font-size:12px;margin-top:2px">${CALL_RESULTS[c.result] || c.result}</div>
+          ${c.comment ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${c.comment}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    return `
+    <div class="card" style="border-left:3px solid ${borderColor};margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <span style="font-size:15px;font-weight:700">#${o.orderId}</span>
+          <span class="shop-tag" style="margin-left:8px">${SHOPS[o.shop]}</span>
+          <span style="margin-left:8px;font-size:12px;color:var(--muted)">Додав: ${o.manager} · ${fmtDateShort(o.addedAt)}</span>
+          ${o.resolved ? `<span class="badge badge-green" style="margin-left:8px">✅ Вирішено ${o.resolvedBy ? o.resolvedBy + ' · ' : ''}${fmtDateShort(o.resolvedAt)}</span>` : `<span class="badge badge-red" style="margin-left:8px">🔴 В роботі</span>`}
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="openCallModal('${o.id}')">📞 Дзвінки (${o.calls.length})</button>
+          <button class="btn btn-sm btn-red" onclick="deleteNegative('${o.id}')">✕</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;background:rgba(248,113,113,0.08);border-radius:8px;padding:10px 14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">ВІДГУК КЛІЄНТА</div>
+        <div style="font-size:13px">${o.review}</div>
+      </div>
+
+      ${o.comment ? `<div style="margin-top:8px;font-size:12px;color:var(--muted)">💬 ${o.comment}</div>` : ''}
+
+      ${o.calls.length ? `
+        <div style="margin-top:12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">ЖУРНАЛ ДЗВІНКІВ</div>
+          ${callsHtml}
+        </div>
+      ` : ''}
+
+      ${lastCall && !o.resolved ? `
+        <div style="margin-top:8px;font-size:12px;color:var(--yellow)">
+          ⏰ Останній дзвінок: ${lastCall.manager} · ${fmtDateShort(lastCall.date)} · ${CALL_RESULTS[lastCall.result]}
+        </div>
+      ` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ========== CALL MODAL ==========
+function openCallModal(id) {
+  const neg = getNegative().find(o => o.id === id);
+  if (!neg) return;
+  document.getElementById('call-neg-id').value = id;
+  document.getElementById('call-modal-order').textContent = '#' + neg.orderId;
+  document.getElementById('call-comment').value = '';
+
+  // Render existing calls
+  const callList = document.getElementById('call-log-list');
+  if (!neg.calls.length) {
+    callList.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">Дзвінків ще немає</div>';
+  } else {
+    callList.innerHTML = neg.calls.map((c,i) => `
+      <div style="padding:10px;background:var(--surface2);border-radius:8px;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:600">${i+1}. ${c.manager} · ${fmtDateShort(c.date)}</div>
+        <div style="font-size:12px;margin-top:4px">${CALL_RESULTS[c.result]}</div>
+        ${c.comment ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${c.comment}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('call-modal').classList.add('open');
+}
+
+function closeCallModal() {
+  document.getElementById('call-modal').classList.remove('open');
+}
+
+function addCallLog() {
+  const id = document.getElementById('call-neg-id').value;
+  const manager = document.getElementById('call-manager').value;
+  const result = document.getElementById('call-result').value;
+  const comment = document.getElementById('call-comment').value.trim();
+
+  const list = getNegative();
+  const idx = list.findIndex(o => o.id === id);
+  if (idx === -1) return;
+
+  list[idx].calls.push({ manager, result, comment, date: new Date().toISOString() });
+  saveNegative(list);
+  closeCallModal();
+  renderNegative();
+}
+
+function resolveNegative() {
+  const id = document.getElementById('call-neg-id').value;
+  const manager = document.getElementById('call-manager').value;
+  const result = document.getElementById('call-result').value;
+  const comment = document.getElementById('call-comment').value.trim();
+
+  const list = getNegative();
+  const idx = list.findIndex(o => o.id === id);
+  if (idx === -1) return;
+
+  // Save the last call first
+  list[idx].calls.push({ manager, result, comment, date: new Date().toISOString() });
+
+  // Then mark resolved with who resolved it
+  list[idx].resolved = true;
+  list[idx].resolvedAt = new Date().toISOString();
+  list[idx].resolvedBy = manager;
+
+  saveNegative(list);
+  closeCallModal();
+  renderNegative();
+}
+
+document.getElementById('call-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeCallModal();
+});
+
+// ========== INIT ==========
+// Set default dates (current month)
+const now = new Date();
+const y = now.getFullYear();
+const m = String(now.getMonth()+1).padStart(2,'0');
+document.getElementById('s-from').value = `${y}-${m}-01`;
+document.getElementById('s-to').value = `${y}-${m}-${String(new Date(y, now.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
+
+renderOrders();
+renderNegative();
+</script>
+</body>
+</html>

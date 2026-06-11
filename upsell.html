@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Допродажі — Black Street</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAACj0lEQVR4nO2ZMW5TQRCGv5l5Do4bRK4QCUoKRMMJOAMKbRpOgURBQZ1bUNAgcQC6IGhAiKAgpaEBBDRY+O0OxXtOHBGUBmZQvF+z68J+//5vdnZ2LICzxmi2gGyaAdkCsmkGZAvIphmQLSCbZkC2gGyaAdkCsmkGZAvIphmQLSCbZkC2gGy61KfLyjypLxVvwJ8WrUAN1sIgJ9R7RXEcB2zTwBx6KPOSoCYyB9g4PDBsx7CbBu+ANwJvhcnOZFi8hSkCIj0XEAc5NHgOcgDlfj1+fPeto25X6pdxHwRFQlwEOIBA52COz4AF8ENgLvSXC3JbwqMgdAs4jn4w5EjR14JOFNkUZDpkRrkl5/zI3yfuFFhG9q7j3x3/6tiGDoGxpZSHBb/qCILXuEyYkHfPEiHoS8NnFb/muPgFzAFLOoY9bsAGsAm+AfXIYdwKka8kvhDqV+ZlOXHkyurnOMIN6LYnyEyh+HH1J1tQbhT81fjqA6vC+Ah4DPV6HRaosIz3QsUODKdcbAN6en7b5AuBicA+Y5EcR7gBguDO4MGyEOwcrQpPx8UHXopSrsMigtrpA0gfKf3hYjgdApNheB0g7xX9rOg9genwdJ9DfVGoUsOrkvgI6KB+qpT9yklzwE8NwXKCceASYNDtdmDQ7y2GzN+f891/QE5P0EGK4Hccv1uRKmvWEltG/NSH6zGkGRAfAWcuNO8+lrMFZGUU4XSnNJY4A2RcbxGkHxsgP4Fy0izKIC4HKHiB7onhH52egj4zmEClpBkQXgiZGu5O9YqqIgilJtyDR/6LjlAma//fYDMgW0A2zYBsAdk0A7IFZNMMyBaQTTMgW0A2zYBsAdk0A7IFZNMMyBaQTTMgW0A2vwC63sGUy1BM7QAAAABJRU5ErkJggg==">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Inter:wght@300;400;500;600&display=swap');
+  :root {
+    --bg: #0a0a0a; --surface: #111111; --surface2: #1a1a1a;
+    --border: #2a2a2a; --accent: #f0ff00; --accent2: #00ffaa;
+    --red: #ff4444; --text: #f0f0f0; --muted: #666;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+  header { padding: 24px 32px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-family: 'Unbounded', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  header h1 span { color: var(--accent); }
+  .sync-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); }
+  .sync-status.ok { color: var(--accent2); border-color: #0a3a1a; }
+  .sync-status.err { color: var(--red); border-color: #3a0a0a; }
+  .sync-status.loading { color: var(--accent); border-color: #3a3a00; }
+  .tabs { display: flex; gap: 4px; padding: 20px 32px 0; }
+  .tab { padding: 10px 20px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 13px; font-weight: 500; background: var(--surface2); color: var(--muted); border: 1px solid var(--border); border-bottom: none; transition: all 0.2s; }
+  .tab.active { background: var(--surface); color: var(--text); }
+  .main { padding: 0 32px 32px; border-top: 1px solid var(--border); background: var(--surface); border-radius: 0 8px 8px 8px; margin: 0 32px; }
+  .page { display: none; padding-top: 24px; }
+  .page.active { display: block; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 700px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+  input, select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 14px; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s; }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  .btn { padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; transition: all 0.2s; }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 6px; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-track { background: var(--accent2); color: #000; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .stat-card .value { font-family: 'Unbounded', sans-serif; font-size: 24px; font-weight: 800; }
+  .stat-card .value.accent { color: var(--accent); }
+  .stat-card .value.green { color: var(--accent2); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; background: var(--surface2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-new { background: #1a2a4a; color: #6ab0ff; }
+  .badge-received { background: #0a2a1a; color: var(--accent2); }
+  .badge-refused { background: #2a0a0a; color: var(--red); }
+  .badge-transit { background: #2a2000; color: var(--accent); }
+  .manager-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 12px; display: flex; align-items: center; gap: 20px; }
+  .manager-rank { font-family: 'Unbounded', sans-serif; font-size: 28px; font-weight: 800; color: var(--border); min-width: 40px; }
+  .manager-rank.gold { color: #ffd700; }
+  .manager-rank.silver { color: #c0c0c0; }
+  .manager-rank.bronze { color: #cd7f32; }
+  .manager-name { font-weight: 600; font-size: 15px; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.5s ease; }
+  .filter-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .filter-row select, .filter-row input { padding: 8px 12px; font-size: 13px; min-width: 160px; }
+  .section-title { font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; margin-top: 24px; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent); color: #000; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; opacity: 0; transform: translateY(10px); transition: all 0.3s; z-index: 1000; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .empty { color: var(--muted); font-size: 14px; padding: 32px; text-align: center; }
+  .ttn-input { font-family: monospace; }
+  .loader { text-align:center; padding: 48px; color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 600px) {
+    header { padding: 16px; }
+    header h1 { font-size: 14px; }
+    .tabs { padding: 12px 16px 0; gap: 2px; }
+    .tab { padding: 8px 12px; font-size: 11px; }
+    .main { padding: 0 16px 24px; margin: 0 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { padding: 14px; }
+    .stat-card .value { font-size: 18px; }
+    .filter-row { gap: 8px; }
+    .filter-row select, .filter-row input { min-width: unset; width: 100%; }
+    .manager-card { padding: 14px 16px; }
+    .manager-rank { font-size: 20px; min-width: 28px; }
+    .manager-name { font-size: 13px; }
+    table { font-size: 11px; }
+    th, td { padding: 8px 8px; }
+    .btn-sm { padding: 5px 8px; font-size: 10px; }
+    .section-title { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BLACK STREET <span>//</span> ДОПРОДАЖІ</h1>
+  <div id="sync-status" class="sync-status loading">⏳ Підключення...</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('add')">➕ Додати</div>
+  <div class="tab" onclick="switchTab('orders')">📦 Замовлення</div>
+  <div class="tab" onclick="switchTab('managers')">🏆 Менеджери</div>
+</div>
+
+<div class="main">
+  <!-- ADD TAB -->
+  <div class="page active" id="tab-add">
+    <div class="section-title">Нова допродажа</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Менеджер</label>
+        <select id="f-manager"><option value="">— Виберіть —</option></select>
+      </div>
+      <div class="form-group">
+        <label>Сума допродажі (грн)</label>
+        <input type="number" id="f-amount" placeholder="1500" min="0">
+      </div>
+      <div class="form-group">
+        <label>Номер телефону клієнта</label>
+        <input type="tel" id="f-phone" placeholder="+380XXXXXXXXX">
+      </div>
+      <div class="form-group">
+        <label>ТТН Нової Пошти</label>
+        <input type="text" id="f-ttn" class="ttn-input" placeholder="20450000000000">
+      </div>
+      <div class="form-group full">
+        <label>Товар / Коментар</label>
+        <input type="text" id="f-product" placeholder="Напр: Костюм Polo Ralph Lauren XL чорний">
+      </div>
+      <div class="form-group">
+        <label>Тип допродажі</label>
+        <select id="f-type">
+          <option value="">— Виберіть —</option>
+          <option value="Повітря">Повітря</option>
+          <option value="Товар">Товар</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <button class="btn btn-primary" onclick="addOrder()">ДОДАТИ ДОПРОДАЖУ</button>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:32px;">Управління менеджерами</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <input type="text" id="new-manager" placeholder="Ім'я нового менеджера" style="max-width:220px;">
+      <button class="btn btn-primary btn-sm" onclick="addManager()">ДОДАТИ</button>
+    </div>
+    <div id="manager-list" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- ORDERS TAB -->
+  <div class="page" id="tab-orders">
+    <div class="filter-row">
+      <select id="filter-manager" onchange="renderOrders()">
+        <option value="">Всі менеджери</option>
+      </select>
+      <select id="filter-status" onchange="renderOrders()">
+        <option value="">Всі статуси</option>
+        <option value="new">Нове</option>
+        <option value="transit">В дорозі</option>
+        <option value="received">Отримано</option>
+        <option value="refused">Відмова</option>
+      </select>
+      <select id="filter-type" onchange="renderOrders()">
+        <option value="">Всі типи</option>
+        <option value="Повітря">Повітря</option>
+        <option value="Товар">Товар</option>
+      </select>
+      <select id="per-page" onchange="renderOrders()" style="min-width:120px;">
+        <option value="25">25 на стор.</option>
+        <option value="50" selected>50 на стор.</option>
+        <option value="100">100 на стор.</option>
+        <option value="999999">Всі</option>
+      </select>
+      <button class="btn btn-track btn-sm" onclick="trackAll()">🔄 ОНОВИТИ ТТН</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Менеджер</th><th>Дата</th><th>Телефон</th>
+            <th>ТТН</th><th>Товар</th><th>Тип</th><th>Сума</th><th>Статус</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody"></tbody>
+      </table>
+    </div>
+    <div id="orders-empty" class="empty" style="display:none;">Немає записів</div>
+    <div id="pagination" style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;flex-wrap:wrap;gap:10px;">
+      <div id="pagination-info" style="font-size:12px;color:var(--muted);"></div>
+      <div id="pagination-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <!-- MANAGERS TAB -->
+  <div class="page" id="tab-managers">
+    <div class="filter-row" style="margin-bottom:16px;">
+      <select id="period-preset" onchange="applyPreset()">
+        <option value="">— Період —</option>
+        <option value="today">Сьогодні</option>
+        <option value="week">Цей тиждень</option>
+        <option value="month">Цей місяць</option>
+        <option value="custom">Свій діапазон</option>
+      </select>
+      <div id="custom-dates" style="display:none;gap:8px;align-items:center;">
+        <input type="date" id="date-from" onchange="renderManagers()">
+        <span style="color:var(--muted);font-size:13px;">—</span>
+        <input type="date" id="date-to" onchange="renderManagers()">
+      </div>
+      <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);" onclick="clearPeriod()">Скинути</button>
+      <select id="filter-type-stats" onchange="renderManagers()">
+        <option value="">Всі типи</option>
+        <option value="Повітря">Повітря</option>
+        <option value="Товар">Товар</option>
+      </select>
+    </div>
+    <div class="stats-grid" id="total-stats"></div>
+    <div class="section-title">Рейтинг менеджерів</div>
+    <div id="managers-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, doc, onSnapshot,
+  addDoc, updateDoc, deleteDoc, setDoc, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// ---- FIREBASE INIT ----
+const firebaseConfig = {
+  apiKey: "AIzaSyC-D2oLeBlbN3nTQ_Mi8gOQ2SA7aPSmIAE",
+  authDomain: "apsell-48b8e.firebaseapp.com",
+  projectId: "apsell-48b8e",
+  storageBucket: "apsell-48b8e.firebasestorage.app",
+  messagingSenderId: "1051142332623",
+  appId: "1:1051142332623:web:af40b1725ed6da8afed7ba"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ---- STATE ----
+let orders = [];
+let managers = ['Марина', 'Софія', 'Поліна'];
+
+// ---- SYNC STATUS ----
+function setSyncStatus(state, msg) {
+  const el = document.getElementById('sync-status');
+  el.className = 'sync-status ' + state;
+  el.textContent = msg;
+}
+
+// ---- REAL-TIME LISTENERS ----
+// Orders listener
+onSnapshot(collection(db, 'orders'), snap => {
+  orders = snap.docs.map(d => ({ fireId: d.id, ...d.data() }));
+  orders.sort((a,b) => (b.timestamp?.seconds||0) - (a.timestamp?.seconds||0));
+  setSyncStatus('ok', '🟢 Синхронізовано');
+  renderOrders();
+  renderManagers();
+}, err => {
+  console.error('Firebase error:', err);
+  setSyncStatus('err', '🔴 Помилка: ' + err.code);
+});
+
+// Managers listener
+onSnapshot(doc(db, 'config', 'managers'), snap => {
+  if(snap.exists()) {
+    managers = snap.data().list || managers;
+    renderManagerSelects();
+  }
+}, () => {});
+
+// ---- TOAST ----
+window.toast = function(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ---- TABS ----
+window.switchTab = function(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const tabs = ['add','orders','managers'];
+  document.querySelectorAll('.tab')[tabs.indexOf(id)].classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='managers') renderManagers();
+}
+
+// ---- MANAGERS ----
+function renderManagerSelects() {
+  const opts = ['<option value="">— Виберіть —</option>',
+    ...managers.map(m => `<option>${m}</option>`)].join('');
+  document.getElementById('f-manager').innerHTML = opts;
+  document.getElementById('filter-manager').innerHTML =
+    '<option value="">Всі менеджери</option>' + managers.map(m=>`<option>${m}</option>`).join('');
+  renderManagerChips();
+}
+
+function renderManagerChips() {
+  document.getElementById('manager-list').innerHTML = managers.map(m =>
+    `<div style="background:var(--surface2);border:1px solid var(--border);padding:6px 12px;border-radius:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
+      ${m}
+      <span onclick="removeManager('${m}')" style="cursor:pointer;color:var(--red);font-size:16px;line-height:1;">×</span>
+    </div>`
+  ).join('');
+}
+
+async function saveManagers() {
+  await setDoc(doc(db, 'config', 'managers'), { list: managers });
+}
+
+window.addManager = async function() {
+  const v = document.getElementById('new-manager').value.trim();
+  if(!v) return;
+  if(managers.includes(v)) { toast('Вже є!'); return; }
+  managers.push(v);
+  await saveManagers();
+  document.getElementById('new-manager').value = '';
+  toast('Менеджера додано ✓');
+}
+
+window.removeManager = async function(name) {
+  if(!confirm(`Видалити менеджера "${name}"?`)) return;
+  managers = managers.filter(m => m !== name);
+  await saveManagers();
+}
+
+// ---- ADD ORDER ----
+window.addOrder = async function() {
+  const manager = document.getElementById('f-manager').value;
+  const amount = parseFloat(document.getElementById('f-amount').value) || 0;
+  const phone = document.getElementById('f-phone').value.trim();
+  const ttn = document.getElementById('f-ttn').value.trim();
+  const product = document.getElementById('f-product').value.trim();
+  const type = document.getElementById('f-type').value;
+  if(!manager) { toast('Виберіть менеджера!'); return; }
+  if(!amount) { toast('Введіть суму!'); return; }
+
+  const order = {
+    manager, amount, phone, ttn, product, type,
+    date: new Date().toLocaleDateString('uk-UA'),
+    status: 'new',
+    timestamp: serverTimestamp()
+  };
+
+  await addDoc(collection(db, 'orders'), order);
+  document.getElementById('f-amount').value = '';
+  document.getElementById('f-phone').value = '';
+  document.getElementById('f-ttn').value = '';
+  document.getElementById('f-product').value = '';
+  document.getElementById('f-type').value = '';
+  document.getElementById('f-manager').value = '';
+  toast('Допродажу додано ✓');
+}
+
+// ---- RENDER ORDERS ----
+let currentPage = 1;
+
+window.renderOrders = function renderOrders(resetPage) {
+  if(resetPage) currentPage = 1;
+  const fm = document.getElementById('filter-manager').value;
+  const fs = document.getElementById('filter-status').value;
+  const ft = document.getElementById('filter-type').value;
+  const perPage = parseInt(document.getElementById('per-page')?.value || '50');
+  let filtered = orders;
+  if(fm) filtered = filtered.filter(o => o.manager === fm);
+  if(fs) filtered = filtered.filter(o => o.status === fs);
+  if(ft) filtered = filtered.filter(o => o.type === ft);
+
+  const statusLabels = { new:'Нове', transit:'В дорозі', received:'Отримано', refused:'Відмова' };
+  const statusClass = { new:'badge-new', transit:'badge-transit', received:'badge-received', refused:'badge-refused' };
+  const tbody = document.getElementById('orders-tbody');
+  const empty = document.getElementById('orders-empty');
+
+  if(!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    document.getElementById('pagination').style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  if(currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * perPage;
+  const pageItems = filtered.slice(start, start + perPage);
+
+  tbody.innerHTML = pageItems.map((o, i) => `
+    <tr>
+      <td style="color:var(--muted);font-size:12px;">${start + i + 1}</td>
+      <td><strong>${o.manager}</strong></td>
+      <td style="color:var(--muted);font-size:12px;">${o.date}</td>
+      <td style="font-family:monospace;font-size:12px;">${o.phone || '—'}</td>
+      <td>
+        ${o.ttn
+          ? `<span style="font-family:monospace;font-size:12px;">${o.ttn}</span>
+             <button class="btn btn-track btn-sm" style="margin-left:6px;" onclick="trackTTN('${o.fireId}')">🔄</button>`
+          : '<span style="color:var(--muted)">—</span>'
+        }
+      </td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.product || '—'}</td>
+      <td><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${o.type==='Повітря'?'#1a2a4a':o.type==='Товар'?'#0a2a1a':'var(--surface2)'};color:${o.type==='Повітря'?'#6ab0ff':o.type==='Товар'?'var(--accent2)':'var(--muted)'};">${o.type||'—'}</span></td>
+      <td><strong style="color:var(--accent);">${o.amount.toLocaleString()} грн</strong></td>
+      <td><span class="badge ${statusClass[o.status]||'badge-new'}">${statusLabels[o.status]||o.status}</span></td>
+      <td>
+        <select onchange="changeStatus('${o.fireId}', this.value)" style="padding:4px 8px;font-size:11px;">
+          <option value="new" ${o.status==='new'?'selected':''}>Нове</option>
+          <option value="transit" ${o.status==='transit'?'selected':''}>В дорозі</option>
+          <option value="received" ${o.status==='received'?'selected':''}>Отримано</option>
+          <option value="refused" ${o.status==='refused'?'selected':''}>Відмова</option>
+        </select>
+        <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);margin-left:4px;" onclick="editOrder('${o.fireId}')">✏️</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="deleteOrder('${o.fireId}')">✕</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Pagination controls
+  const pag = document.getElementById('pagination');
+  const info = document.getElementById('pagination-info');
+  const btns = document.getElementById('pagination-btns');
+
+  if(totalPages <= 1) { pag.style.display = 'none'; return; }
+  pag.style.display = 'flex';
+  info.textContent = `Показано ${start+1}–${Math.min(start+perPage, filtered.length)} з ${filtered.length}`;
+
+  let html = '';
+  // Prev
+  html += `<button onclick="goPage(${currentPage-1})" class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);${currentPage===1?'opacity:0.3;pointer-events:none;':''}" >←</button>`;
+  // Pages
+  for(let p = 1; p <= totalPages; p++) {
+    if(totalPages > 7 && p > 2 && p < totalPages - 1 && Math.abs(p - currentPage) > 1) {
+      if(p === 3 || p === totalPages - 2) html += `<span style="color:var(--muted);padding:0 4px;">...</span>`;
+      continue;
+    }
+    html += `<button onclick="goPage(${p})" class="btn btn-sm" style="background:${p===currentPage?'var(--accent)':'var(--surface2)'};border:1px solid var(--border);color:${p===currentPage?'#000':'var(--text)'};">${p}</button>`;
+  }
+  // Next
+  html += `<button onclick="goPage(${currentPage+1})" class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);${currentPage===totalPages?'opacity:0.3;pointer-events:none;':''}">→</button>`;
+  btns.innerHTML = html;
+}
+
+window.goPage = function(p) {
+  currentPage = p;
+  renderOrders();
+  document.getElementById('tab-orders').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+window.changeStatus = async function(fireId, status) {
+  await updateDoc(doc(db, 'orders', fireId), { status });
+}
+
+window.deleteOrder = async function(fireId) {
+  if(!confirm('Видалити запис?')) return;
+  await deleteDoc(doc(db, 'orders', fireId));
+  toast('Видалено');
+}
+
+// ---- EDIT ORDER ----
+window.editOrder = function(fireId) {
+  const o = orders.find(x => x.fireId === fireId);
+  if(!o) return;
+  const old = document.getElementById('edit-modal');
+  if(old) old.remove();
+  const managerOpts = managers.map(m => `<option ${m===o.manager?'selected':''}>${m}</option>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'edit-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:999;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:480px;max-width:95vw;">
+      <div style="font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;margin-bottom:20px;color:var(--accent);">РЕДАГУВАТИ ДОПРОДАЖУ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group"><label>Менеджер</label><select id="e-manager">${managerOpts}</select></div>
+        <div class="form-group"><label>Сума (грн)</label><input type="number" id="e-amount" value="${o.amount}"></div>
+        <div class="form-group"><label>Телефон</label><input type="tel" id="e-phone" value="${o.phone||''}"></div>
+        <div class="form-group"><label>ТТН</label><input type="text" id="e-ttn" class="ttn-input" value="${o.ttn||''}"></div>
+        <div class="form-group" style="grid-column:1/-1;"><label>Товар / Коментар</label><input type="text" id="e-product" value="${o.product||''}"></div>
+        <div class="form-group"><label>Тип допродажі</label><select id="e-type"><option value="">—</option><option value="Повітря" ${o.type==='Повітря'?'selected':''}>Повітря</option><option value="Товар" ${o.type==='Товар'?'selected':''}>Товар</option></select></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="saveEdit('${fireId}')">ЗБЕРЕГТИ</button>
+        <button class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);" onclick="document.getElementById('edit-modal').remove()">СКАСУВАТИ</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
+
+window.saveEdit = async function(fireId) {
+  const o = orders.find(x => x.fireId === fireId);
+  if(!o) return;
+  await updateDoc(doc(db, 'orders', fireId), {
+    manager: document.getElementById('e-manager').value,
+    amount: parseFloat(document.getElementById('e-amount').value) || o.amount,
+    phone: document.getElementById('e-phone').value.trim(),
+    ttn: document.getElementById('e-ttn').value.trim(),
+    product: document.getElementById('e-product').value.trim(),
+    type: document.getElementById('e-type').value
+  });
+  document.getElementById('edit-modal').remove();
+  toast('Збережено ✓');
+}
+
+// ---- TRACK TTN ----
+window.trackTTN = async function(fireId) {
+  const o = orders.find(x => x.fireId === fireId);
+  if(!o || !o.ttn) return;
+  toast('Перевіряємо ТТН...');
+  try {
+    const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: '23a11029ed799942ec9015a4cf4c7ea3',
+        modelName: 'TrackingDocument',
+        calledMethod: 'getStatusDocuments',
+        methodProperties: { Documents: [{ DocumentNumber: o.ttn, Phone: o.phone || '' }] }
+      })
+    });
+    const json = await res.json();
+    const docData = json?.data?.[0];
+    if(docData) {
+      const sc = String(docData.StatusCode);
+      let newStatus = o.status;
+      if(['9','11'].includes(sc)) newStatus = 'received';
+      else if(['102','103','10'].includes(sc)) newStatus = 'refused';
+      else if(['3','4','5','6','7','8','101'].includes(sc)) newStatus = 'transit';
+      if(newStatus !== o.status) await updateDoc(doc(db, 'orders', fireId), { status: newStatus });
+      toast(`${o.ttn}: ${docData.Status}`);
+    }
+  } catch(e) { toast('⚠️ Помилка запиту до НП'); }
+}
+
+window.trackAll = async function() {
+  const withTTN = orders.filter(o => o.ttn && o.status !== 'received' && o.status !== 'refused');
+  if(!withTTN.length) { toast('Немає ТТН для відстеження'); return; }
+  for(const o of withTTN) await trackTTN(o.fireId);
+  toast(`Оновлено ${withTTN.length} ТТН`);
+}
+
+// ---- DATE FILTER ----
+window.applyPreset = function() {
+  const v = document.getElementById('period-preset').value;
+  const customDiv = document.getElementById('custom-dates');
+  const today = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+  if(v === 'custom') { customDiv.style.display = 'flex'; return; }
+  customDiv.style.display = 'none';
+  if(v === 'today') {
+    document.getElementById('date-from').value = fmt(today);
+    document.getElementById('date-to').value = fmt(today);
+  } else if(v === 'week') {
+    const mon = new Date(today); mon.setDate(today.getDate() - today.getDay() + 1);
+    document.getElementById('date-from').value = fmt(mon);
+    document.getElementById('date-to').value = fmt(today);
+  } else if(v === 'month') {
+    document.getElementById('date-from').value = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+    document.getElementById('date-to').value = fmt(today);
+  }
+  renderManagers();
+}
+
+window.clearPeriod = function() {
+  document.getElementById('period-preset').value = '';
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value = '';
+  document.getElementById('filter-type-stats').value = '';
+  document.getElementById('custom-dates').style.display = 'none';
+  renderManagers();
+}
+
+function getFilteredOrders() {
+  const from = document.getElementById('date-from')?.value;
+  const to = document.getElementById('date-to')?.value;
+  const ft = document.getElementById('filter-type-stats')?.value;
+  let result = orders;
+  if(ft) result = result.filter(o => o.type === ft);
+  if(!from && !to) return result;
+  return result.filter(o => {
+    const parts = o.date.split('.');
+    const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    const f = from ? new Date(from) : null;
+    const t = to ? new Date(to) : null;
+    if(f) f.setHours(0,0,0,0);
+    if(t) t.setHours(23,59,59,999);
+    if(f && d < f) return false;
+    if(t && d > t) return false;
+    return true;
+  });
+}
+
+// ---- RENDER MANAGERS ----
+window.renderManagers = function renderManagers() {
+  const filtered = getFilteredOrders();
+  const stats = {};
+  managers.forEach(m => {
+    stats[m] = { count:0, totalAmount:0, inWorkCount:0, inWorkAmount:0, soldCount:0, soldAmount:0, refusedCount:0, refusedAmount:0 };
+  });
+  filtered.forEach(o => {
+    if(!stats[o.manager]) return;
+    const s = stats[o.manager];
+    s.count++; s.totalAmount += o.amount;
+    if(o.status === 'received') { s.soldCount++; s.soldAmount += o.amount; }
+    if(o.status === 'refused') { s.refusedCount++; s.refusedAmount += o.amount; }
+    if(o.status !== 'refused' && o.status !== 'received') { s.inWorkCount++; s.inWorkAmount += o.amount; }
+  });
+
+  const totalAmount = filtered.reduce((s,o) => s+o.amount, 0);
+  const inWorkOrders = filtered.filter(o => o.status !== 'refused' && o.status !== 'received');
+  const inWorkAmount = inWorkOrders.reduce((s,o) => s+o.amount, 0);
+  const soldOrders = filtered.filter(o => o.status === 'received');
+  const soldAmount = soldOrders.reduce((s,o) => s+o.amount, 0);
+  const refusedOrders = filtered.filter(o => o.status === 'refused');
+  const refusedAmount = refusedOrders.reduce((s,o) => s+o.amount, 0);
+  const completedTotal = soldOrders.length + refusedOrders.length;
+  const pickupRate = completedTotal > 0 ? Math.round(soldOrders.length / completedTotal * 100) : null;
+  const pickupColor = pickupRate === null ? 'var(--muted)' : pickupRate >= 70 ? 'var(--accent2)' : pickupRate >= 50 ? 'var(--accent)' : 'var(--red)';
+
+  const from = document.getElementById('date-from')?.value;
+  const to = document.getElementById('date-to')?.value;
+  const periodLabel = (from||to) ? `<span style="color:var(--accent);font-size:12px;"> · ${from||'...'} — ${to||'...'}</span>` : '';
+
+  document.getElementById('total-stats').innerHTML = `
+    <div class="stat-card" style="border-color:#333;">
+      <div class="label">📊 Загальна сума${periodLabel}</div>
+      <div class="value accent">${totalAmount.toLocaleString()} грн</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">${filtered.length} допродажів</div>
+    </div>
+    <div class="stat-card" style="border-color:#1a3a5a;">
+      <div class="label">⚙️ В роботі</div>
+      <div class="value" style="color:#6ab0ff;">${inWorkAmount.toLocaleString()} грн</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">${inWorkOrders.length} замовлень</div>
+    </div>
+    <div class="stat-card" style="border-color:#0a3a1a;">
+      <div class="label">✅ Продажа</div>
+      <div class="value green">${soldAmount.toLocaleString()} грн</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">${soldOrders.length} отримано</div>
+    </div>
+    <div class="stat-card" style="border-color:#3a0a0a;">
+      <div class="label">❌ Відмови</div>
+      <div class="value" style="color:var(--red);">${refusedAmount.toLocaleString()} грн</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">${refusedOrders.length} замовлень</div>
+    </div>
+    <div class="stat-card" style="border-color:#2a2a00;">
+      <div class="label">📦 % Забору</div>
+      <div class="value" style="color:${pickupColor};">${pickupRate !== null ? pickupRate + '%' : '—'}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">${completedTotal} завершених</div>
+    </div>`;
+
+  const sorted = Object.entries(stats).sort((a,b) => b[1].count - a[1].count);
+  const maxCount = sorted[0]?.[1]?.count || 1;
+  const rankClasses = ['gold','silver','bronze'];
+  const rankEmojis = ['🥇','🥈','🥉'];
+
+  document.getElementById('managers-list').innerHTML = sorted.map(([name, s], i) => `
+    <div class="manager-card" style="flex-direction:column;align-items:stretch;gap:14px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="manager-rank ${rankClasses[i]||''}">${rankEmojis[i]||(i+1)}</div>
+        <div style="flex:1;">
+          <div class="manager-name">${name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${s.count} допродажів</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">📊 Загальна</div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--accent);">${s.totalAmount.toLocaleString()} грн</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${s.count} шт</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid #1a3a5a;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">⚙️ В роботі</div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:#6ab0ff;">${s.inWorkAmount.toLocaleString()} грн</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${s.inWorkCount} шт</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid #0a3a1a;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">✅ Продажа</div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--accent2);">${s.soldAmount.toLocaleString()} грн</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${s.soldCount} шт</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid #3a0a0a;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">❌ Відмови</div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--red);">${s.refusedAmount.toLocaleString()} грн</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">${s.refusedCount} шт</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid #2a2a00;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">📦 % Забору</div>
+          ${(()=>{ const c=s.soldCount+s.refusedCount; const r=c>0?Math.round(s.soldCount/c*100):null; const col=r===null?'var(--muted)':r>=70?'var(--accent2)':r>=50?'var(--accent)':'var(--red)'; return `<div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:${col};">${r!==null?r+'%':'—'}</div><div style="font-size:11px;color:var(--muted);margin-top:3px;">${c} завершених</div>`; })()}
+        </div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${maxCount?(s.count/maxCount*100):0}%"></div></div>
+    </div>`).join('');
+}
+
+// ---- AUTO TRACK every 15 min ----
+async function autoTrack() {
+  const withTTN = orders.filter(o => o.ttn && o.status !== 'received' && o.status !== 'refused');
+  if(!withTTN.length) return;
+  for(const o of withTTN) await trackTTN(o.fireId);
+}
+setInterval(autoTrack, 15 * 60 * 1000);
+setTimeout(autoTrack, 5000);
+
+// ---- INIT ----
+renderManagerSelects();
+</script>
+</body>
+</html>
