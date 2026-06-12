@@ -486,6 +486,7 @@ tr.row-normal:hover td { background: var(--surface2); }
 <!-- NAV -->
 <nav class="nav">
   <span class="nav-title">📋 Трекер відгуків</span>
+  <span id="sync-status" style="font-size:11px;padding:4px 10px;border-radius:20px;background:#1a1a1a;color:#666;margin-left:8px;">⏳ Підключення...</span>
   <button class="nav-tab active" onclick="showPage('orders', this)">📦 Замовлення</button>
   <button class="nav-tab" onclick="showPage('stats', this)">📊 Статистика</button>
   <button class="nav-tab" onclick="showPage('negative', this)">⚠️ Негативні</button>
@@ -750,7 +751,7 @@ tr.row-normal:hover td { background: var(--surface2); }
   </div>
 </div>
 
-<script>
+<script type="module">
 // ========== CONSTANTS ==========
 const MANAGERS = ['Марина', 'Поліна', 'Софія'];
 const SHOPS = {
@@ -767,10 +768,55 @@ const CALL_RESULTS = {
 };
 
 // ========== STORAGE ==========
-const getOrders = () => { try { return JSON.parse(localStorage.getItem('rt_orders') || '[]'); } catch { return []; } };
-const saveOrders = d => localStorage.setItem('rt_orders', JSON.stringify(d));
-const getNegative = () => { try { return JSON.parse(localStorage.getItem('rt_negative') || '[]'); } catch { return []; } };
-const saveNegative = d => localStorage.setItem('rt_negative', JSON.stringify(d));
+// ========== FIREBASE ==========
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC-D2oLeBlbN3nTQ_Mi8gOQ2SA7aPSmIAE",
+  authDomain: "apsell-48b8e.firebaseapp.com",
+  projectId: "apsell-48b8e",
+  storageBucket: "apsell-48b8e.firebasestorage.app",
+  messagingSenderId: "1051142332623",
+  appId: "1:1051142332623:web:af40b1725ed6da8afed7ba"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// In-memory cache
+let _orders = [];
+let _negative = [];
+
+// Sync status
+function setSyncStatus(ok) {
+  const el = document.getElementById('sync-status');
+  if (el) { el.textContent = ok ? '🟢 Синхронізовано' : '🔴 Помилка'; el.style.color = ok ? '#00ffaa' : '#ff4444'; }
+}
+
+// Real-time listeners
+onSnapshot(collection(db, 'reviews_orders'), snap => {
+  _orders = snap.docs.map(d => ({ ...d.data(), _fid: d.id }));
+  _orders.sort((a,b) => new Date(b.calledAt) - new Date(a.calledAt));
+  setSyncStatus(true);
+  renderOrders();
+  renderStats();
+}, () => setSyncStatus(false));
+
+onSnapshot(collection(db, 'reviews_negative'), snap => {
+  _negative = snap.docs.map(d => ({ ...d.data(), _fid: d.id }));
+  _negative.sort((a,b) => new Date(b.addedAt) - new Date(a.addedAt));
+  renderNegative();
+}, () => {});
+
+const getOrders = () => _orders;
+const getNegative = () => _negative;
+
+async function saveOrders(arr) {
+  // Not used directly — use Firebase ops
+}
+async function saveNegative(arr) {
+  // Not used directly — use Firebase ops
+}
 
 // ========== FILTERS STATE ==========
 const filters = { manager: 'all', shop: 'all', status: 'all' };
@@ -793,7 +839,7 @@ function showPage(page, el) {
 }
 
 // ========== ADD ORDER ==========
-function addOrder() {
+async function addOrder() {
   const manager = document.getElementById('f-manager').value;
   const shop = document.getElementById('f-shop').value;
   const orderId = document.getElementById('f-order').value.trim().replace(/\D/g, '');
@@ -802,61 +848,49 @@ function addOrder() {
 
   if (!orderId) { msgEl.innerHTML = '<div class="alert error">Введіть номер замовлення</div>'; return; }
 
-  const orders = getOrders();
-  if (orders.find(o => o.orderId === orderId && o.shop === shop)) {
+  if (_orders.find(o => o.orderId === orderId && o.shop === shop)) {
     msgEl.innerHTML = '<div class="alert error">Це замовлення вже додано</div>'; return;
   }
 
-  orders.push({
+  await addDoc(collection(db, 'reviews_orders'), {
     id: Date.now().toString(),
-    orderId,
-    shop,
-    manager,
-    comment,
+    orderId, shop, manager, comment,
     hasReview: false,
     reviewDate: null,
-    calledAt: new Date().toISOString()
+    calledAt: new Date().toISOString(),
+    calls: []
   });
 
-  saveOrders(orders);
   document.getElementById('f-order').value = '';
   document.getElementById('f-comment').value = '';
   msgEl.innerHTML = '<div class="alert success">✅ Замовлення додано!</div>';
-  renderOrders();
   setTimeout(() => msgEl.innerHTML = '', 3000);
 }
 
 // ========== MARK REVIEW ==========
-function markReview(id) {
-  const orders = getOrders();
-  const idx = orders.findIndex(o => o.id === id);
-  if (idx === -1) return;
-  orders[idx].hasReview = true;
-  orders[idx].reviewDate = new Date().toISOString();
-  saveOrders(orders);
-  renderOrders();
+async function markReview(id) {
+  const order = _orders.find(o => o.id === id);
+  if (!order) return;
+  await updateDoc(doc(db, 'reviews_orders', order._fid), { hasReview: true, reviewDate: new Date().toISOString() });
 }
 
-function unmarkReview(id) {
-  const orders = getOrders();
-  const idx = orders.findIndex(o => o.id === id);
-  if (idx === -1) return;
-  orders[idx].hasReview = false;
-  orders[idx].reviewDate = null;
-  saveOrders(orders);
-  renderOrders();
+async function unmarkReview(id) {
+  const order = _orders.find(o => o.id === id);
+  if (!order) return;
+  await updateDoc(doc(db, 'reviews_orders', order._fid), { hasReview: false, reviewDate: null });
 }
 
-function deleteOrder(id) {
+async function deleteOrder(id) {
   if (!confirm('Видалити замовлення?')) return;
-  saveOrders(getOrders().filter(o => o.id !== id));
-  renderOrders();
+  const order = _orders.find(o => o.id === id);
+  if (!order) return;
+  await deleteDoc(doc(db, 'reviews_orders', order._fid));
 }
 
-function clearDone() {
+async function clearDone() {
   if (!confirm('Видалити всі замовлення з відгуками?')) return;
-  saveOrders(getOrders().filter(o => !o.hasReview));
-  renderOrders();
+  const done = _orders.filter(o => o.hasReview);
+  for (const o of done) await deleteDoc(doc(db, 'reviews_orders', o._fid));
 }
 
 // ========== FORMAT ==========
@@ -1037,23 +1071,22 @@ function renderOrderCallsList(order) {
   `).join('');
 }
 
-function saveOrderCall() {
+async function saveOrderCall() {
   const id = document.getElementById('ocm-id').value;
   const manager = document.getElementById('ocm-manager').value;
   const result = document.getElementById('ocm-result').value;
   const comment = document.getElementById('ocm-comment').value.trim();
 
-  const orders = getOrders();
-  const idx = orders.findIndex(o => o.id === id);
-  if (idx === -1) return;
+  const order = _orders.find(o => o.id === id);
+  if (!order) return;
 
-  if (!orders[idx].calls) orders[idx].calls = [];
-  orders[idx].calls.push({ manager, result, comment, date: new Date().toISOString() });
-  saveOrders(orders);
+  const calls = order.calls || [];
+  calls.push({ manager, result, comment, date: new Date().toISOString() });
+  await updateDoc(doc(db, 'reviews_orders', order._fid), { calls });
 
   document.getElementById('ocm-comment').value = '';
-  renderOrderCallsList(orders[idx]);
-  renderOrders();
+  const updated = { ...order, calls };
+  renderOrderCallsList(updated);
 }
 
 function closeOrderCalls() {
@@ -1079,17 +1112,16 @@ function closeModal() {
   document.getElementById('edit-modal').classList.remove('open');
 }
 
-function saveEdit() {
+async function saveEdit() {
   const id = document.getElementById('edit-id').value;
-  const orders = getOrders();
-  const idx = orders.findIndex(o => o.id === id);
-  if (idx === -1) return;
-  orders[idx].manager = document.getElementById('edit-manager').value;
-  orders[idx].shop = document.getElementById('edit-shop').value;
-  orders[idx].comment = document.getElementById('edit-comment').value.trim();
-  saveOrders(orders);
+  const order = _orders.find(o => o.id === id);
+  if (!order) return;
+  await updateDoc(doc(db, 'reviews_orders', order._fid), {
+    manager: document.getElementById('edit-manager').value,
+    shop: document.getElementById('edit-shop').value,
+    comment: document.getElementById('edit-comment').value.trim()
+  });
   closeModal();
-  renderOrders();
 }
 
 // Close modal on overlay click
@@ -1107,7 +1139,7 @@ function setNFilter(type, val, el) {
   renderNegative();
 }
 
-function addNegative() {
+async function addNegative() {
   const manager = document.getElementById('n-manager').value;
   const shop = document.getElementById('n-shop').value;
   const orderId = document.getElementById('n-order').value.trim().replace(/\D/g,'');
@@ -1118,29 +1150,30 @@ function addNegative() {
   if (!orderId) { msgEl.innerHTML = '<div class="alert error">Введіть номер замовлення</div>'; return; }
   if (!review) { msgEl.innerHTML = '<div class="alert error">Введіть текст відгуку</div>'; return; }
 
-  const list = getNegative();
-  list.push({
+  await addDoc(collection(db, 'reviews_negative'), {
     id: Date.now().toString(),
     orderId, shop, manager, review, comment,
     resolved: false,
     resolvedAt: null,
+    resolvedBy: null,
     addedAt: new Date().toISOString(),
     calls: []
   });
 
-  saveNegative(list);
   document.getElementById('n-order').value = '';
   document.getElementById('n-review').value = '';
   document.getElementById('n-comment').value = '';
   msgEl.innerHTML = '<div class="alert success">✅ Додано!</div>';
   setTimeout(() => msgEl.innerHTML = '', 3000);
-  renderNegative();
 }
 
-function deleteNegative(id) {
+async function deleteNegative(id) {}
+
+async function deleteNegative(id) {
   if (!confirm('Видалити?')) return;
-  saveNegative(getNegative().filter(o => o.id !== id));
-  renderNegative();
+  const neg = _negative.find(o => o.id === id);
+  if (!neg) return;
+  await deleteDoc(doc(db, 'reviews_negative', neg._fid));
 }
 
 function renderNegative() {
@@ -1261,43 +1294,37 @@ function closeCallModal() {
   document.getElementById('call-modal').classList.remove('open');
 }
 
-function addCallLog() {
+async function addCallLog() {
   const id = document.getElementById('call-neg-id').value;
   const manager = document.getElementById('call-manager').value;
   const result = document.getElementById('call-result').value;
   const comment = document.getElementById('call-comment').value.trim();
 
-  const list = getNegative();
-  const idx = list.findIndex(o => o.id === id);
-  if (idx === -1) return;
+  const neg = _negative.find(o => o.id === id);
+  if (!neg) return;
 
-  list[idx].calls.push({ manager, result, comment, date: new Date().toISOString() });
-  saveNegative(list);
+  const calls = [...(neg.calls || []), { manager, result, comment, date: new Date().toISOString() }];
+  await updateDoc(doc(db, 'reviews_negative', neg._fid), { calls });
   closeCallModal();
-  renderNegative();
 }
 
-function resolveNegative() {
+async function resolveNegative() {
   const id = document.getElementById('call-neg-id').value;
   const manager = document.getElementById('call-manager').value;
   const result = document.getElementById('call-result').value;
   const comment = document.getElementById('call-comment').value.trim();
 
-  const list = getNegative();
-  const idx = list.findIndex(o => o.id === id);
-  if (idx === -1) return;
+  const neg = _negative.find(o => o.id === id);
+  if (!neg) return;
 
-  // Save the last call first
-  list[idx].calls.push({ manager, result, comment, date: new Date().toISOString() });
-
-  // Then mark resolved with who resolved it
-  list[idx].resolved = true;
-  list[idx].resolvedAt = new Date().toISOString();
-  list[idx].resolvedBy = manager;
-
-  saveNegative(list);
+  const calls = [...(neg.calls || []), { manager, result, comment, date: new Date().toISOString() }];
+  await updateDoc(doc(db, 'reviews_negative', neg._fid), {
+    calls,
+    resolved: true,
+    resolvedAt: new Date().toISOString(),
+    resolvedBy: manager
+  });
   closeCallModal();
-  renderNegative();
 }
 
 document.getElementById('call-modal').addEventListener('click', function(e) {
@@ -1312,8 +1339,30 @@ const m = String(now.getMonth()+1).padStart(2,'0');
 document.getElementById('s-from').value = `${y}-${m}-01`;
 document.getElementById('s-to').value = `${y}-${m}-${String(new Date(y, now.getMonth()+1, 0).getDate()).padStart(2,'0')}`;
 
-renderOrders();
-renderNegative();
+// Make functions global for onclick handlers
+window.addOrder = addOrder;
+window.markReview = markReview;
+window.unmarkReview = unmarkReview;
+window.deleteOrder = deleteOrder;
+window.clearDone = clearDone;
+window.saveOrderCall = saveOrderCall;
+window.closeOrderCalls = closeOrderCalls;
+window.openOrderCalls = openOrderCalls;
+window.openEdit = openEdit;
+window.closeModal = closeModal;
+window.saveEdit = saveEdit;
+window.addNegative = addNegative;
+window.deleteNegative = deleteNegative;
+window.openCallModal = openCallModal;
+window.closeCallModal = closeCallModal;
+window.addCallLog = addCallLog;
+window.resolveNegative = resolveNegative;
+window.setFilter = setFilter;
+window.setNFilter = setNFilter;
+window.showPage = showPage;
+window.resetStatsFilters = resetStatsFilters;
+window.renderStats = renderStats;
+window.initConfig = initConfig;
 </script>
 </body>
 </html>
