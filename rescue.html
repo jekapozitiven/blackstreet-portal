@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Спасіння замовлень</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  nav { background: #111; border-bottom: 1px solid #1e1e1e; padding: 0 24px; display: flex; align-items: center; gap: 4px; height: 52px; }
+  .nav-logo { font-weight: 800; font-size: 14px; margin-right: 20px; color: #f0f0f0; }
+  .nav-logo span { color: #f0ff00; }
+  .nav-btn { padding: 6px 16px; border-radius: 6px; border: none; background: none; color: #666; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .nav-btn:hover { color: #f0f0f0; background: rgba(255,255,255,0.05); }
+  .nav-btn.active { color: #f0f0f0; background: rgba(240,255,0,0.08); border: 1px solid rgba(240,255,0,0.15); }
+  .sync { margin-left: auto; font-size: 11px; padding: 4px 10px; border-radius: 20px; background: #1a1a1a; color: #666; }
+
+  .page { display: none; padding: 24px; }
+  .page.active { display: block; }
+
+  .section-title { font-size: 11px; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; }
+
+  /* FORM */
+  .form-card { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 11px; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select, textarea { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; color: #f0f0f0; padding: 9px 12px; font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.15s; width: 100%; }
+  input:focus, select:focus, textarea:focus { border-color: #f0ff00; }
+  select option { background: #1a1a1a; }
+
+  .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.2s; }
+  .btn-primary { background: #f0ff00; color: #000; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
+  .btn-danger { background: #ff4444; color: #fff; }
+  .btn-secondary { background: #1a1a1a; border: 1px solid #2a2a2a; color: #f0f0f0; }
+  .btn-track { background: #00ffaa; color: #000; }
+
+  /* STATUS BADGE */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-new { background: #1a2a4a; color: #6ab0ff; }
+  .badge-missed { background: #2a1a3a; color: #cc88ff; }
+  .badge-sent { background: #2a2000; color: #f0ff00; }
+  .badge-received { background: #0a2a1a; color: #00ffaa; }
+  .badge-refused { background: #2a0a0a; color: #ff4444; }
+  .badge-quality { background: #2a1500; color: #ff9944; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; background: #111; color: #444; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #1e1e1e; }
+  td { padding: 11px 12px; border-bottom: 1px solid #161616; vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+  .empty { text-align: center; padding: 48px; color: #333; font-size: 14px; }
+
+  /* FILTER ROW */
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .filter-row select { min-width: 140px; padding: 7px 12px; font-size: 12px; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; padding: 18px; }
+  .stat-card .lbl { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .stat-card .val { font-size: 26px; font-weight: 800; }
+
+  /* MANAGER CARDS */
+  .manager-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .manager-card { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; padding: 18px; }
+  .manager-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .manager-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #161616; font-size: 12px; }
+  .manager-stat-row:last-child { border-bottom: none; }
+  .manager-stat-row .lbl { color: #555; }
+  .manager-stat-row .val { font-weight: 700; }
+
+  .rescue-rate { margin-top: 10px; padding: 10px; background: #0a0a0a; border-radius: 8px; text-align: center; }
+  .rescue-rate .pct { font-size: 28px; font-weight: 800; }
+
+  /* PAGINATION */
+  .pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; flex-wrap: wrap; gap: 8px; }
+  .pagination-info { font-size: 12px; color: #444; }
+  .pagination-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .modal { background: #111; border: 1px solid #2a2a2a; border-radius: 16px; padding: 28px; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 14px; font-weight: 700; color: #f0ff00; margin-bottom: 20px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #f0ff00; color: #000; padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 13px; opacity: 0; transform: translateY(10px); transition: all 0.3s; z-index: 1000; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 600px) {
+    nav { padding: 0 12px; }
+    .page { padding: 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">🛟 <span>СПАСІННЯ</span></div>
+  <button class="nav-btn active" onclick="switchTab('orders')">📋 Замовлення</button>
+  <button class="nav-btn" onclick="switchTab('stats')">📊 Статистика</button>
+  <span id="sync-status" class="sync">⏳ Підключення...</span>
+</nav>
+
+<!-- ORDERS PAGE -->
+<div class="page active" id="page-orders">
+  <div class="form-card">
+    <div class="section-title">➕ Додати замовлення</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Менеджер</label>
+        <select id="f-manager">
+          <option value="Марина">Марина</option>
+          <option value="Софія">Софія</option>
+          <option value="Поліна">Поліна</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Телефон клієнта</label>
+        <input type="tel" id="f-phone" placeholder="+380XXXXXXXXX">
+      </div>
+      <div class="form-group">
+        <label>ТТН Нової Пошти</label>
+        <input type="text" id="f-ttn" placeholder="20450000000000" style="font-family:monospace;">
+      </div>
+      <div class="form-group">
+        <label>Причина відмови</label>
+        <select id="f-reason">
+          <option value="size">Не підійшов розмір</option>
+          <option value="changed_mind">Передумав</option>
+          <option value="quality">Якість</option>
+          <option value="other">Інше</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Коментар</label>
+        <input type="text" id="f-comment" placeholder="Примітка...">
+      </div>
+      <div class="form-group">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="addOrder()">ДОДАТИ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <select id="filter-manager" onchange="renderOrders()">
+      <option value="">Всі менеджери</option>
+      <option>Марина</option>
+      <option>Софія</option>
+      <option>Поліна</option>
+    </select>
+    <select id="filter-status" onchange="renderOrders()">
+      <option value="">Всі статуси</option>
+      <option value="new">Новий</option>
+      <option value="missed">Недозвон</option>
+      <option value="sent">Відправили заміну</option>
+      <option value="received">Отримали</option>
+      <option value="refused">Відмовили знову</option>
+      <option value="quality">Не сподобалась якість</option>
+    </select>
+    <select id="per-page" onchange="renderOrders()">
+      <option value="25">25 на стор.</option>
+      <option value="50" selected>50 на стор.</option>
+      <option value="100">100 на стор.</option>
+      <option value="999999">Всі</option>
+    </select>
+    <button class="btn btn-track btn-sm" onclick="trackAll()">🔄 ОНОВИТИ ТТН</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Менеджер</th>
+          <th>Дата</th>
+          <th>Телефон</th>
+          <th>ТТН</th>
+          <th>Причина</th>
+          <th>Коментар</th>
+          <th>Статус ТТН</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="orders-tbody"></tbody>
+    </table>
+  </div>
+  <div id="orders-empty" class="empty" style="display:none;">Немає записів</div>
+  <div class="pagination" id="pagination" style="display:none;">
+    <div class="pagination-info" id="pagination-info"></div>
+    <div class="pagination-btns" id="pagination-btns"></div>
+  </div>
+</div>
+
+<!-- STATS PAGE -->
+<div class="page" id="page-stats">
+  <div class="section-title">Загальна статистика</div>
+  <div class="stats-grid" id="total-stats"></div>
+
+  <div class="section-title">По менеджерах</div>
+  <div class="manager-grid" id="manager-stats"></div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal" style="display:none;" onclick="closeModal(event)">
+  <div class="modal">
+    <h3>✏️ РЕДАГУВАТИ ЗАМОВЛЕННЯ</h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Менеджер</label>
+        <select id="e-manager">
+          <option>Марина</option>
+          <option>Софія</option>
+          <option>Поліна</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Телефон</label>
+        <input type="tel" id="e-phone">
+      </div>
+      <div class="form-group">
+        <label>ТТН</label>
+        <input type="text" id="e-ttn" style="font-family:monospace;">
+      </div>
+      <div class="form-group">
+        <label>Причина відмови</label>
+        <select id="e-reason">
+          <option value="size">Не підійшов розмір</option>
+          <option value="changed_mind">Передумав</option>
+          <option value="quality">Якість</option>
+          <option value="other">Інше</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Статус</label>
+        <select id="e-status">
+          <option value="new">🆕 Новий</option>
+          <option value="missed">📞 Недозвон</option>
+          <option value="sent">📦 Відправили заміну</option>
+          <option value="received">✅ Отримали</option>
+          <option value="refused">❌ Відмовили знову</option>
+          <option value="quality">👎 Не сподобалась якість</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Коментар</label>
+        <input type="text" id="e-comment">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveEdit()">ЗБЕРЕГТИ</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('edit-modal').style.display='none'">СКАСУВАТИ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC-D2oLeBlbN3nTQ_Mi8gOQ2SA7aPSmIAE",
+  authDomain: "apsell-48b8e.firebaseapp.com",
+  projectId: "apsell-48b8e",
+  storageBucket: "apsell-48b8e.firebasestorage.app",
+  messagingSenderId: "1051142332623",
+  appId: "1:1051142332623:web:af40b1725ed6da8afed7ba"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let orders = [];
+let currentPage = 1;
+let editId = null;
+
+const NP_API_KEY = '23a11029ed799942ec9015a4cf4c7ea3';
+
+const STATUS_LABELS = {
+  new: '🆕 Новий',
+  missed: '📞 Недозвон',
+  sent: '📦 Відправили заміну',
+  received: '✅ Отримали',
+  refused: '❌ Відмовили знову',
+  quality: '👎 Не сподобалась якість'
+};
+
+const STATUS_CLASS = {
+  new: 'badge-new',
+  missed: 'badge-missed',
+  sent: 'badge-sent',
+  received: 'badge-received',
+  refused: 'badge-refused',
+  quality: 'badge-quality'
+};
+
+const REASON_LABELS = {
+  size: 'Не підійшов розмір',
+  changed_mind: 'Передумав',
+  quality: 'Якість',
+  other: 'Інше'
+};
+
+// Sync
+function setSyncStatus(ok) {
+  const el = document.getElementById('sync-status');
+  el.textContent = ok ? '🟢 Синхронізовано' : '🔴 Помилка';
+  el.style.color = ok ? '#00ffaa' : '#ff4444';
+}
+
+onSnapshot(collection(db, 'rescue_orders'), snap => {
+  orders = snap.docs.map(d => ({ fid: d.id, ...d.data() }));
+  orders.sort((a,b) => (b.timestamp?.seconds||0) - (a.timestamp?.seconds||0));
+  setSyncStatus(true);
+  renderOrders();
+  renderStats();
+}, () => setSyncStatus(false));
+
+// Toast
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Tabs
+window.switchTab = function(tab) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('page-' + tab).classList.add('active');
+  if(tab === 'stats') renderStats();
+}
+
+// Add order
+window.addOrder = async function() {
+  const manager = document.getElementById('f-manager').value;
+  const phone = document.getElementById('f-phone').value.trim();
+  const ttn = document.getElementById('f-ttn').value.trim();
+  const reason = document.getElementById('f-reason').value;
+  const comment = document.getElementById('f-comment').value.trim();
+
+  if(!phone) { toast('Введіть телефон!'); return; }
+
+  await addDoc(collection(db, 'rescue_orders'), {
+    manager, phone, ttn, reason, comment,
+    status: 'new',
+    ttnStatus: '',
+    date: new Date().toLocaleDateString('uk-UA'),
+    timestamp: serverTimestamp()
+  });
+
+  document.getElementById('f-phone').value = '';
+  document.getElementById('f-ttn').value = '';
+  document.getElementById('f-comment').value = '';
+  toast('Замовлення додано ✓');
+}
+
+// Render orders
+window.renderOrders = function(resetPage) {
+  if(resetPage) currentPage = 1;
+  const fm = document.getElementById('filter-manager').value;
+  const fs = document.getElementById('filter-status').value;
+  const perPage = parseInt(document.getElementById('per-page')?.value || '50');
+
+  let filtered = orders;
+  if(fm) filtered = filtered.filter(o => o.manager === fm);
+  if(fs) filtered = filtered.filter(o => o.status === fs);
+
+  const tbody = document.getElementById('orders-tbody');
+  const empty = document.getElementById('orders-empty');
+  const pag = document.getElementById('pagination');
+
+  if(!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    pag.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  if(currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * perPage;
+  const items = filtered.slice(start, start + perPage);
+
+  tbody.innerHTML = items.map((o, i) => `
+    <tr>
+      <td style="color:#444;font-size:12px;">${start+i+1}</td>
+      <td><strong>${o.manager}</strong></td>
+      <td style="color:#555;font-size:12px;">${o.date}</td>
+      <td style="font-family:monospace;font-size:12px;">${o.phone}</td>
+      <td>
+        ${o.ttn
+          ? `<span style="font-family:monospace;font-size:11px;">${o.ttn}</span>
+             <button class="btn btn-track btn-sm" style="margin-left:4px;" onclick="trackTTN('${o.fid}')">🔄</button>`
+          : '<span style="color:#333;">—</span>'}
+      </td>
+      <td style="font-size:12px;color:#888;">${REASON_LABELS[o.reason]||o.reason||'—'}</td>
+      <td style="font-size:12px;color:#666;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.comment||'—'}</td>
+      <td style="font-size:11px;color:#555;">${o.ttnStatus||'—'}</td>
+      <td><span class="badge ${STATUS_CLASS[o.status]||'badge-new'}">${STATUS_LABELS[o.status]||o.status}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openEdit('${o.fid}')">✏️</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="deleteOrder('${o.fid}')">✕</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Pagination
+  if(totalPages <= 1) { pag.style.display = 'none'; return; }
+  pag.style.display = 'flex';
+  document.getElementById('pagination-info').textContent = `Показано ${start+1}–${Math.min(start+perPage,filtered.length)} з ${filtered.length}`;
+
+  let btns = '';
+  btns += `<button onclick="goPage(${currentPage-1})" class="btn btn-secondary btn-sm" ${currentPage===1?'disabled':''}>←</button>`;
+  for(let p=1; p<=totalPages; p++) {
+    if(totalPages>7 && p>2 && p<totalPages-1 && Math.abs(p-currentPage)>1) {
+      if(p===3||p===totalPages-2) btns += `<span style="color:#444;padding:0 4px;">...</span>`;
+      continue;
+    }
+    btns += `<button onclick="goPage(${p})" class="btn btn-sm" style="background:${p===currentPage?'#f0ff00':'#1a1a1a'};border:1px solid #2a2a2a;color:${p===currentPage?'#000':'#f0f0f0'};">${p}</button>`;
+  }
+  btns += `<button onclick="goPage(${currentPage+1})" class="btn btn-secondary btn-sm" ${currentPage===totalPages?'disabled':''}>→</button>`;
+  document.getElementById('pagination-btns').innerHTML = btns;
+}
+
+window.goPage = function(p) {
+  currentPage = p;
+  renderOrders();
+}
+
+// Edit
+window.openEdit = function(fid) {
+  const o = orders.find(x => x.fid === fid);
+  if(!o) return;
+  editId = fid;
+  document.getElementById('e-manager').value = o.manager;
+  document.getElementById('e-phone').value = o.phone;
+  document.getElementById('e-ttn').value = o.ttn||'';
+  document.getElementById('e-reason').value = o.reason||'size';
+  document.getElementById('e-status').value = o.status||'new';
+  document.getElementById('e-comment').value = o.comment||'';
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+window.saveEdit = async function() {
+  if(!editId) return;
+  await updateDoc(doc(db, 'rescue_orders', editId), {
+    manager: document.getElementById('e-manager').value,
+    phone: document.getElementById('e-phone').value.trim(),
+    ttn: document.getElementById('e-ttn').value.trim(),
+    reason: document.getElementById('e-reason').value,
+    status: document.getElementById('e-status').value,
+    comment: document.getElementById('e-comment').value.trim()
+  });
+  document.getElementById('edit-modal').style.display = 'none';
+  toast('Збережено ✓');
+}
+
+window.closeModal = function(e) {
+  if(e.target.id === 'edit-modal') document.getElementById('edit-modal').style.display = 'none';
+}
+
+window.deleteOrder = async function(fid) {
+  if(!confirm('Видалити?')) return;
+  await deleteDoc(doc(db, 'rescue_orders', fid));
+  toast('Видалено');
+}
+
+// Track TTN
+window.trackTTN = async function(fid) {
+  const o = orders.find(x => x.fid === fid);
+  if(!o || !o.ttn) return;
+  toast('Перевіряємо ТТН...');
+  try {
+    const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: NP_API_KEY,
+        modelName: 'TrackingDocument',
+        calledMethod: 'getStatusDocuments',
+        methodProperties: { Documents: [{ DocumentNumber: o.ttn, Phone: o.phone||'' }] }
+      })
+    });
+    const json = await res.json();
+    const d = json?.data?.[0];
+    if(d) {
+      let newStatus = o.status;
+      const sc = String(d.StatusCode);
+      if(['9','11'].includes(sc)) newStatus = 'received';
+      else if(['102','103'].includes(sc)) newStatus = 'refused';
+      await updateDoc(doc(db, 'rescue_orders', fid), { ttnStatus: d.Status, status: newStatus });
+      toast(d.Status);
+    }
+  } catch(e) { toast('Помилка НП'); }
+}
+
+window.trackAll = async function() {
+  const withTTN = orders.filter(o => o.ttn && !['received','refused'].includes(o.status));
+  if(!withTTN.length) { toast('Немає ТТН'); return; }
+  for(const o of withTTN) await trackTTN(o.fid);
+  toast(`Оновлено ${withTTN.length} ТТН`);
+}
+
+// Auto track
+setInterval(() => trackAll(), 15 * 60 * 1000);
+
+// Stats
+function renderStats() {
+  const managers = ['Марина', 'Софія', 'Поліна'];
+  const statuses = ['new','missed','sent','received','refused','quality'];
+
+  // Global
+  const total = orders.length;
+  const byStatus = {};
+  statuses.forEach(s => byStatus[s] = orders.filter(o => o.status === s).length);
+  const rescued = byStatus.received;
+  const completed = byStatus.received + byStatus.refused + byStatus.quality;
+  const rescueRate = completed > 0 ? Math.round(rescued/completed*100) : null;
+  const rateColor = rescueRate===null?'#444':rescueRate>=60?'#00ffaa':rescueRate>=40?'#f0ff00':'#ff4444';
+
+  document.getElementById('total-stats').innerHTML = `
+    <div class="stat-card" style="border-color:#1e1e1e;">
+      <div class="lbl">📋 Всього</div>
+      <div class="val" style="color:#6ab0ff;">${total}</div>
+    </div>
+    <div class="stat-card" style="border-color:#1a2a4a;">
+      <div class="lbl">🆕 Нові</div>
+      <div class="val" style="color:#6ab0ff;">${byStatus.new}</div>
+    </div>
+    <div class="stat-card" style="border-color:#2a1a3a;">
+      <div class="lbl">📞 Недозвон</div>
+      <div class="val" style="color:#cc88ff;">${byStatus.missed}</div>
+    </div>
+    <div class="stat-card" style="border-color:#2a2000;">
+      <div class="lbl">📦 Відправили</div>
+      <div class="val" style="color:#f0ff00;">${byStatus.sent}</div>
+    </div>
+    <div class="stat-card" style="border-color:#0a2a1a;">
+      <div class="lbl">✅ Отримали</div>
+      <div class="val" style="color:#00ffaa;">${byStatus.received}</div>
+    </div>
+    <div class="stat-card" style="border-color:#2a0a0a;">
+      <div class="lbl">❌ Відмовили знову</div>
+      <div class="val" style="color:#ff4444;">${byStatus.refused}</div>
+    </div>
+    <div class="stat-card" style="border-color:#2a1500;">
+      <div class="lbl">👎 Якість</div>
+      <div class="val" style="color:#ff9944;">${byStatus.quality}</div>
+    </div>
+    <div class="stat-card" style="border-color:#2a2a00;">
+      <div class="lbl">🛟 % Спасіння</div>
+      <div class="val" style="color:${rateColor};">${rescueRate!==null?rescueRate+'%':'—'}</div>
+    </div>
+  `;
+
+  document.getElementById('manager-stats').innerHTML = managers.map((m,i) => {
+    const mo = orders.filter(o => o.manager === m);
+    const ms = {};
+    statuses.forEach(s => ms[s] = mo.filter(o => o.status === s).length);
+    const mc = ms.received + ms.refused + ms.quality;
+    const mr = mc > 0 ? Math.round(ms.received/mc*100) : null;
+    const mrColor = mr===null?'#444':mr>=60?'#00ffaa':mr>=40?'#f0ff00':'#ff4444';
+    const medals = ['🥇','🥈','🥉'];
+
+    return `
+      <div class="manager-card">
+        <h3>${medals[i]||'👤'} ${m} <span style="font-size:11px;color:#444;font-weight:400;">${mo.length} всього</span></h3>
+        ${statuses.map(s => `
+          <div class="manager-stat-row">
+            <span class="lbl">${STATUS_LABELS[s]}</span>
+            <span class="val">${ms[s]}</span>
+          </div>`).join('')}
+        <div class="rescue-rate">
+          <div style="font-size:10px;color:#444;margin-bottom:4px;">% СПАСІННЯ</div>
+          <div class="pct" style="color:${mrColor};">${mr!==null?mr+'%':'—'}</div>
+          <div style="font-size:10px;color:#333;margin-top:2px;">${mc} завершених</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+</script>
+</body>
+</html>
