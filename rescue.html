@@ -159,12 +159,18 @@
     </select>
     <select id="filter-status" onchange="renderOrders()">
       <option value="">Всі статуси</option>
-      <option value="new">Новий</option>
-      <option value="missed">Недозвон</option>
-      <option value="sent">Відправили заміну</option>
-      <option value="received">Отримали</option>
-      <option value="refused">Відмовили знову</option>
-      <option value="quality">Не сподобалась якість</option>
+      <option value="new">🆕 Новий</option>
+      <option value="missed">📞 Недозвон</option>
+      <option value="sent">📦 Відправили</option>
+      <option value="received">✅ Отримали</option>
+      <option value="refused">❌ Відмовили</option>
+      <option value="quality">👎 Якість</option>
+    </select>
+    <select id="filter-hide" onchange="renderOrders()">
+      <option value="">Нічого не ховати</option>
+      <option value="hide_final">Сховати завершені</option>
+      <option value="hide_received">Сховати отримані</option>
+      <option value="hide_refused">Сховати відмови</option>
     </select>
     <select id="per-page" onchange="renderOrders()">
       <option value="25">25 на стор.</option>
@@ -305,6 +311,24 @@ const STATUS_CLASS = {
   quality: 'badge-quality'
 };
 
+// НП статуси → колір бейджу
+function getTTNBadge(statusCode, statusText) {
+  if(!statusCode && !statusText) return `<span style="color:#444;">—</span>`;
+  const sc = String(statusCode||'');
+  let bg, color;
+  if(['9','11'].includes(sc)) { bg='#0a2a1a'; color='#00ffaa'; }           // отримано
+  else if(['102','103','10'].includes(sc)) { bg='#2a0a0a'; color='#ff4444'; } // відмова
+  else if(['3','4','5','6','7','8','101'].includes(sc)) { bg='#2a2000'; color='#f0ff00'; } // в дорозі
+  else if(sc==='1') { bg='#1a2a4a'; color='#6ab0ff'; }                     // нове
+  else { bg='#1a1a1a'; color='#888'; }
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${color};">${statusText||'—'}</span>`;
+}
+
+// Фінальні статуси НП (більше не міняємо вручну)
+function isFinalNPStatus(sc) {
+  return ['9','11','102','103','10'].includes(String(sc||''));
+}
+
 const REASON_LABELS = {
   size: 'Не підійшов розмір',
   changed_mind: 'Передумав',
@@ -373,11 +397,15 @@ window.renderOrders = function(resetPage) {
   if(resetPage) currentPage = 1;
   const fm = document.getElementById('filter-manager').value;
   const fs = document.getElementById('filter-status').value;
+  const fh = document.getElementById('filter-hide')?.value || '';
   const perPage = parseInt(document.getElementById('per-page')?.value || '50');
 
   let filtered = orders;
   if(fm) filtered = filtered.filter(o => o.manager === fm);
   if(fs) filtered = filtered.filter(o => o.status === fs);
+  if(fh === 'hide_final') filtered = filtered.filter(o => !['received','refused'].includes(o.status));
+  if(fh === 'hide_received') filtered = filtered.filter(o => o.status !== 'received');
+  if(fh === 'hide_refused') filtered = filtered.filter(o => o.status !== 'refused');
 
   const tbody = document.getElementById('orders-tbody');
   const empty = document.getElementById('orders-empty');
@@ -410,8 +438,20 @@ window.renderOrders = function(resetPage) {
       </td>
       <td style="font-size:12px;color:#888;">${REASON_LABELS[o.reason]||o.reason||'—'}</td>
       <td style="font-size:12px;color:#666;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.comment||'—'}</td>
-      <td style="font-size:11px;color:#555;">${o.ttnStatus||'—'}</td>
-      <td><span class="badge ${STATUS_CLASS[o.status]||'badge-new'}">${STATUS_LABELS[o.status]||o.status}</span></td>
+      <td style="font-size:11px;">${getTTNBadge(o.ttnStatusCode, o.ttnStatus)}</td>
+      <td>
+        ${isFinalNPStatus(o.ttnStatusCode)
+          ? `<span class="badge ${STATUS_CLASS[o.status]||'badge-new'}">${STATUS_LABELS[o.status]||o.status}</span>`
+          : `<select onchange="changeStatus('${o.fid}', this.value)" style="padding:4px 8px;font-size:11px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#f0f0f0;">
+              <option value="new" ${o.status==='new'?'selected':''}>🆕 Новий</option>
+              <option value="missed" ${o.status==='missed'?'selected':''}>📞 Недозвон</option>
+              <option value="sent" ${o.status==='sent'?'selected':''}>📦 Відправили</option>
+              <option value="received" ${o.status==='received'?'selected':''}>✅ Отримали</option>
+              <option value="refused" ${o.status==='refused'?'selected':''}>❌ Відмовили</option>
+              <option value="quality" ${o.status==='quality'?'selected':''}>👎 Якість</option>
+            </select>`
+        }
+      </td>
       <td style="white-space:nowrap;">
         <button class="btn btn-secondary btn-sm" onclick="openEdit('${o.fid}')">✏️</button>
         <button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="deleteOrder('${o.fid}')">✕</button>
@@ -443,6 +483,10 @@ window.goPage = function(p) {
 }
 
 // Edit
+window.changeStatus = async function(fid, status) {
+  await updateDoc(doc(db, 'rescue_orders', fid), { status });
+}
+
 window.openEdit = function(fid) {
   const o = orders.find(x => x.fid === fid);
   if(!o) return;
@@ -499,11 +543,15 @@ window.trackTTN = async function(fid) {
     const json = await res.json();
     const d = json?.data?.[0];
     if(d) {
-      let newStatus = o.status;
       const sc = String(d.StatusCode);
+      let newStatus = o.status;
       if(['9','11'].includes(sc)) newStatus = 'received';
-      else if(['102','103'].includes(sc)) newStatus = 'refused';
-      await updateDoc(doc(db, 'rescue_orders', fid), { ttnStatus: d.Status, status: newStatus });
+      else if(['102','103','10'].includes(sc)) newStatus = 'refused';
+      await updateDoc(doc(db, 'rescue_orders', fid), {
+        ttnStatus: d.Status,
+        ttnStatusCode: d.StatusCode,
+        status: newStatus
+      });
       toast(d.Status);
     }
   } catch(e) { toast('Помилка НП'); }
