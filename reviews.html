@@ -215,6 +215,8 @@ tr.row-red td { background: rgba(248,113,113,0.07); }
 tr.row-red:hover td { background: rgba(248,113,113,0.12); }
 tr.row-green td { background: rgba(74,222,128,0.07); }
 tr.row-green:hover td { background: rgba(74,222,128,0.12); }
+tr.row-gray td { background: rgba(150,150,160,0.06); }
+tr.row-gray:hover td { background: rgba(150,150,160,0.1); }
 tr.row-normal:hover td { background: var(--surface2); }
 
 /* BADGES */
@@ -551,6 +553,7 @@ tr.row-normal:hover td { background: var(--surface2); }
       <button class="filter-btn active" onclick="setFilter('status','all',this)">Всі</button>
       <button class="filter-btn" onclick="setFilter('status','pending',this)">⏳ Очікують</button>
       <button class="filter-btn" onclick="setFilter('status','done',this)">✅ Є відгук</button>
+      <button class="filter-btn" onclick="setFilter('status','unresolvable',this)">🚫 Неможливо вирішити</button>
     </div>
   </div>
 
@@ -880,6 +883,18 @@ async function unmarkReview(id) {
   await updateDoc(doc(db, 'reviews_orders', order._fid), { hasReview: false, reviewDate: null });
 }
 
+async function markUnresolvable(id) {
+  const order = _orders.find(o => o.id === id);
+  if (!order) return;
+  await updateDoc(doc(db, 'reviews_orders', order._fid), { unresolvable: true, hasReview: false, reviewDate: null });
+}
+
+async function unmarkUnresolvable(id) {
+  const order = _orders.find(o => o.id === id);
+  if (!order) return;
+  await updateDoc(doc(db, 'reviews_orders', order._fid), { unresolvable: false });
+}
+
 async function deleteOrder(id) {
   if (!confirm('Видалити замовлення?')) return;
   const order = _orders.find(o => o.id === id);
@@ -898,13 +913,21 @@ const fmtDate = iso => iso ? new Date(iso).toLocaleString('uk', {day:'2-digit',m
 const fmtDateShort = iso => iso ? new Date(iso).toLocaleString('uk', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
 
 // ========== RENDER ORDERS ==========
+function getReviewStatus(o) {
+  if (o.unresolvable) return 'unresolvable';
+  return o.hasReview ? 'done' : 'pending';
+}
+
 function renderOrders() {
   let data = getOrders();
 
   if (filters.manager !== 'all') data = data.filter(o => o.manager === filters.manager);
   if (filters.shop !== 'all') data = data.filter(o => o.shop === filters.shop);
-  if (filters.status === 'pending') data = data.filter(o => !o.hasReview);
-  if (filters.status === 'done') data = data.filter(o => o.hasReview);
+  if (filters.status === 'pending') data = data.filter(o => getReviewStatus(o) === 'pending');
+  if (filters.status === 'done') data = data.filter(o => getReviewStatus(o) === 'done');
+  if (filters.status === 'unresolvable') data = data.filter(o => getReviewStatus(o) === 'unresolvable');
+  // За замовчуванням (status === 'all') ховаємо "неможливо вирішити" зі спільного списку
+  if (filters.status === 'all') data = data.filter(o => getReviewStatus(o) !== 'unresolvable');
 
   data.sort((a,b) => new Date(b.calledAt) - new Date(a.calledAt));
 
@@ -915,14 +938,23 @@ function renderOrders() {
   empty.style.display = 'none';
 
   tbody.innerHTML = data.map(o => {
-    const rowClass = o.hasReview ? 'row-green' : 'row-red';
-    const statusBadge = o.hasReview
+    const st = getReviewStatus(o);
+    const rowClass = st === 'done' ? 'row-green' : st === 'unresolvable' ? 'row-gray' : 'row-red';
+    const statusBadge = st === 'done'
       ? `<span class="badge badge-green">✅ Є відгук</span>`
-      : `<span class="badge badge-red">⏳ Очікує</span>`;
+      : st === 'unresolvable'
+        ? `<span class="badge badge-purple">🚫 Неможливо вирішити</span>`
+        : `<span class="badge badge-red">⏳ Очікує</span>`;
 
-    const actions = o.hasReview
-      ? `<button class="btn btn-sm btn-gray" onclick="unmarkReview('${o.id}')" title="Скасувати">↩</button>`
-      : `<button class="btn btn-sm btn-green" onclick="markReview('${o.id}')">✅ Відгук є</button>`;
+    let actions = '';
+    if (st === 'done') {
+      actions = `<button class="btn btn-sm btn-gray" onclick="unmarkReview('${o.id}')" title="Скасувати">↩</button>`;
+    } else if (st === 'unresolvable') {
+      actions = `<button class="btn btn-sm btn-gray" onclick="unmarkUnresolvable('${o.id}')" title="Повернути в очікування">↩</button>`;
+    } else {
+      actions = `<button class="btn btn-sm btn-green" onclick="markReview('${o.id}')">✅ Відгук є</button>
+                 <button class="btn btn-sm" style="background:#3a2a4a;color:#cc99ff" onclick="markUnresolvable('${o.id}')" title="Неможливо отримати відгук">🚫</button>`;
+    }
 
     return `<tr class="${rowClass}">
       <td><strong>#${o.orderId}</strong></td>
@@ -931,7 +963,7 @@ function renderOrders() {
       <td style="font-size:12px;color:var(--muted);max-width:200px">${o.comment || '—'}</td>
       <td style="font-size:12px;color:var(--muted)">${fmtDateShort(o.calledAt)}</td>
       <td>${statusBadge}</td>
-      <td style="font-size:12px;color:var(--green)">${o.hasReview ? fmtDateShort(o.reviewDate) : '—'}</td>
+      <td style="font-size:12px;color:var(--green)">${st === 'done' ? fmtDateShort(o.reviewDate) : '—'}</td>
       <td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         ${actions}
         <button class="btn btn-sm" style="background:var(--surface2);color:#a8a4ff" onclick="openOrderCalls('${o.id}')">📞${(o.calls||[]).length ? ' '+o.calls.length : ''}</button>
@@ -968,16 +1000,20 @@ function getStatsData() {
 function renderStats() {
   const data = getStatsData();
   const total = data.length;
-  const done = data.filter(o => o.hasReview).length;
-  const pending = data.filter(o => !o.hasReview).length;
-  const pct = total ? Math.round(done/total*100) : 0;
+  const unresolvable = data.filter(o => o.unresolvable).length;
+  const done = data.filter(o => o.hasReview && !o.unresolvable).length;
+  const pending = data.filter(o => !o.hasReview && !o.unresolvable).length;
+  // Конверсія рахується тільки по тих, де відгук реально можливий (без "неможливо вирішити")
+  const resolvableTotal = total - unresolvable;
+  const pct = resolvableTotal ? Math.round(done/resolvableTotal*100) : 0;
 
   // Top boxes
   document.getElementById('stats-top').innerHTML = `
     <div class="stat-box"><div class="stat-num purple">${total}</div><div class="stat-lbl">Всього прозвонено</div></div>
     <div class="stat-box"><div class="stat-num red">${pending}</div><div class="stat-lbl">Очікують відгук</div></div>
     <div class="stat-box"><div class="stat-num green">${done}</div><div class="stat-lbl">Відгуків отримано</div></div>
-    <div class="stat-box"><div class="stat-num yellow">${pct}%</div><div class="stat-lbl">Конверсія</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#cc99ff">${unresolvable}</div><div class="stat-lbl">🚫 Неможливо вирішити</div></div>
+    <div class="stat-box"><div class="stat-num yellow">${pct}%</div><div class="stat-lbl">Конверсія (без 🚫)</div></div>
   `;
 
   // Manager cards
@@ -986,9 +1022,11 @@ function renderStats() {
 
   document.getElementById('stats-managers').innerHTML = mgrs.map(m => {
     const md = data.filter(o => o.manager === m);
-    const mDone = md.filter(o => o.hasReview).length;
-    const mPending = md.filter(o => !o.hasReview).length;
-    const mPct = md.length ? Math.round(mDone/md.length*100) : 0;
+    const mUnresolvable = md.filter(o => o.unresolvable).length;
+    const mDone = md.filter(o => o.hasReview && !o.unresolvable).length;
+    const mPending = md.filter(o => !o.hasReview && !o.unresolvable).length;
+    const mResolvableTotal = md.length - mUnresolvable;
+    const mPct = mResolvableTotal ? Math.round(mDone/mResolvableTotal*100) : 0;
     const bonusPct = Math.min(mDone, 100);
     const bonusLabel = mDone >= 100 ? '🎉 Бонус досягнуто!' : `${mDone}/100 до бонусу`;
 
@@ -997,6 +1035,7 @@ function renderStats() {
       <div class="manager-row"><span>Прозвонено</span><span>${md.length}</span></div>
       <div class="manager-row"><span>Очікують відгук</span><span style="color:var(--red)">${mPending}</span></div>
       <div class="manager-row"><span>Відгуків отримано</span><span style="color:var(--green)">${mDone}</span></div>
+      <div class="manager-row"><span>🚫 Неможливо вирішити</span><span style="color:#cc99ff">${mUnresolvable}</span></div>
       <div class="manager-row"><span>Конверсія</span><span style="color:var(--yellow)">${mPct}%</span></div>
       <div class="manager-row"><span>Бонус</span><span style="color:var(--yellow)">${bonusLabel}</span></div>
       <div class="progress-wrap">
@@ -1012,15 +1051,18 @@ function renderStats() {
 
   document.getElementById('stats-shops').innerHTML = shopKeys.map(sk => {
     const sd = data.filter(o => o.shop === sk);
-    const sDone = sd.filter(o => o.hasReview).length;
-    const sPending = sd.filter(o => !o.hasReview).length;
-    const sPct = sd.length ? Math.round(sDone/sd.length*100) : 0;
+    const sUnresolvable = sd.filter(o => o.unresolvable).length;
+    const sDone = sd.filter(o => o.hasReview && !o.unresolvable).length;
+    const sPending = sd.filter(o => !o.hasReview && !o.unresolvable).length;
+    const sResolvableTotal = sd.length - sUnresolvable;
+    const sPct = sResolvableTotal ? Math.round(sDone/sResolvableTotal*100) : 0;
 
     return `<div class="manager-card">
       <div class="manager-name">🏪 ${SHOPS[sk]}</div>
       <div class="manager-row"><span>Прозвонено</span><span>${sd.length}</span></div>
       <div class="manager-row"><span>Очікують відгук</span><span style="color:var(--red)">${sPending}</span></div>
       <div class="manager-row"><span>Відгуків отримано</span><span style="color:var(--green)">${sDone}</span></div>
+      <div class="manager-row"><span>🚫 Неможливо вирішити</span><span style="color:#cc99ff">${sUnresolvable}</span></div>
       <div class="manager-row"><span>Конверсія</span><span style="color:var(--yellow)">${sPct}%</span></div>
     </div>`;
   }).join('');
@@ -1341,6 +1383,8 @@ document.getElementById('s-to').value = `${y}-${m}-${String(new Date(y, now.getM
 window.addOrder = addOrder;
 window.markReview = markReview;
 window.unmarkReview = unmarkReview;
+window.markUnresolvable = markUnresolvable;
+window.unmarkUnresolvable = unmarkUnresolvable;
 window.deleteOrder = deleteOrder;
 window.clearDone = clearDone;
 window.saveOrderCall = saveOrderCall;
