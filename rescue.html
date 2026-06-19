@@ -127,8 +127,8 @@
         <input type="tel" id="f-phone" placeholder="+380XXXXXXXXX">
       </div>
       <div class="form-group">
-        <label>ТТН Нової Пошти</label>
-        <input type="text" id="f-ttn" placeholder="20450000000000" style="font-family:monospace;">
+        <label>ТТН відмовленого замовлення (стара)</label>
+        <input type="text" id="f-ttn-old" placeholder="20450000000000" style="font-family:monospace;">
       </div>
       <div class="form-group">
         <label>Причина відмови</label>
@@ -140,8 +140,8 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Дата відмови клієнта</label>
-        <input type="date" id="f-refusal-date">
+        <label>ТТН нової відправки (якщо вже відправили)</label>
+        <input type="text" id="f-ttn-new" placeholder="20450000000000" style="font-family:monospace;">
       </div>
       <div class="form-group full">
         <label>Коментар</label>
@@ -196,13 +196,13 @@
         <tr>
           <th>#</th>
           <th>Менеджер</th>
-          <th>Дата</th>
+          <th>Дата відмови</th>
           <th>Телефон</th>
-          <th>ТТН</th>
+          <th>Стара ТТН</th>
+          <th>Нова ТТН</th>
           <th>Причина</th>
           <th>Час реакції</th>
           <th>Коментар</th>
-          <th>Статус ТТН</th>
           <th>Статус</th>
           <th></th>
         </tr>
@@ -244,7 +244,11 @@
         <input type="tel" id="e-phone">
       </div>
       <div class="form-group">
-        <label>ТТН</label>
+        <label>Стара ТТН (відмова)</label>
+        <input type="text" id="e-ttn-old" style="font-family:monospace;">
+      </div>
+      <div class="form-group">
+        <label>Нова ТТН (заміна)</label>
         <input type="text" id="e-ttn" style="font-family:monospace;">
       </div>
       <div class="form-group">
@@ -266,10 +270,6 @@
           <option value="refused">❌ Відмовили знову</option>
           <option value="quality">👎 Не сподобалась якість</option>
         </select>
-      </div>
-      <div class="form-group">
-        <label>Дата відмови клієнта</label>
-        <input type="date" id="e-refusal-date">
       </div>
       <div class="form-group full">
         <label>Коментар</label>
@@ -386,80 +386,77 @@ window.switchTab = function(tab) {
 window.addOrder = async function() {
   const manager = document.getElementById('f-manager').value;
   const phone = document.getElementById('f-phone').value.trim();
-  const ttn = document.getElementById('f-ttn').value.trim();
+  const ttnOld = document.getElementById('f-ttn-old').value.trim();
+  const ttn = document.getElementById('f-ttn-new').value.trim();
   const reason = document.getElementById('f-reason').value;
   const comment = document.getElementById('f-comment').value.trim();
-  const manualRefusalDate = document.getElementById('f-refusal-date').value;
 
   if(!phone) { toast('Введіть телефон!'); return; }
+  if(!ttnOld) { toast('Введіть ТТН відмовленого замовлення!'); return; }
 
   toast('Додаємо замовлення...');
 
-  // Пробуємо отримати точну дату/час відмови з API Нової Пошти за ТТН
-  let refusalDate = manualRefusalDate || null;
-  let refusalDateTime = null; // повний timestamp якщо вдалось дістати з НП
-  let ttnStatus = '';
-  let ttnStatusCode = '';
+  // Точну дату/час відмови беремо з API Нової Пошти за СТАРОЮ ТТН
+  let refusalDate = null;
+  let refusalDateTime = null;
+  let oldTtnStatus = '';
+  let oldTtnStatusCode = '';
 
-  if(ttn) {
-    try {
-      const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiKey: NP_API_KEY,
-          modelName: 'TrackingDocument',
-          calledMethod: 'getStatusDocuments',
-          methodProperties: { Documents: [{ DocumentNumber: ttn, Phone: phone||'' }] }
-        })
-      });
-      const json = await res.json();
-      const d = json?.data?.[0];
-      if(d) {
-        ttnStatus = d.Status || '';
-        ttnStatusCode = d.StatusCode || '';
-        // DateCreated / RecipientDateTime / поля з фактичною датою повернення/відмови
-        const npDate = d.ScheduledDeliveryDate || d.RecipientDateTime || d.DateCreated;
-        if(npDate) {
-          // НП повертає у форматі дд.мм.рррр гг:хх:сс — переводимо у ISO
-          const m = npDate.match(/(\d{2})\.(\d{2})\.(\d{4})\s*(\d{2}:\d{2}:\d{2})?/);
-          if(m) {
-            const iso = `${m[3]}-${m[2]}-${m[1]}${m[4] ? 'T'+m[4] : 'T00:00:00'}`;
-            const parsed = new Date(iso);
-            if(!isNaN(parsed.getTime())) {
-              refusalDateTime = parsed.toISOString();
-              if(!refusalDate) refusalDate = iso.split('T')[0];
-            }
+  try {
+    const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: NP_API_KEY,
+        modelName: 'TrackingDocument',
+        calledMethod: 'getStatusDocuments',
+        methodProperties: { Documents: [{ DocumentNumber: ttnOld, Phone: phone||'' }] }
+      })
+    });
+    const json = await res.json();
+    const d = json?.data?.[0];
+    if(d) {
+      oldTtnStatus = d.Status || '';
+      oldTtnStatusCode = d.StatusCode || '';
+      // Поля з фактичною датою повернення/відмови від НП
+      const npDate = d.ScheduledDeliveryDate || d.RecipientDateTime || d.DateCreated;
+      if(npDate) {
+        const m = npDate.match(/(\d{2})\.(\d{2})\.(\d{4})\s*(\d{2}:\d{2}:\d{2})?/);
+        if(m) {
+          const iso = `${m[3]}-${m[2]}-${m[1]}${m[4] ? 'T'+m[4] : 'T00:00:00'}`;
+          const parsed = new Date(iso);
+          if(!isNaN(parsed.getTime())) {
+            refusalDateTime = parsed.toISOString();
+            refusalDate = iso.split('T')[0];
           }
         }
       }
-    } catch(e) { /* якщо НП недоступна — просто йдемо далі з ручною датою */ }
-  }
+    }
+  } catch(e) { toast('⚠️ Не вдалось отримати дані з НП по старій ТТН'); }
 
   // Фіксуємо час реакції ОДРАЗУ — далі він не перерахується
   let responseHoursFixed = null;
-  const refForCalc = refusalDateTime || (refusalDate ? refusalDate+'T00:00:00' : null);
-  if(refForCalc) {
-    const diffMs = new Date() - new Date(refForCalc);
+  if(refusalDateTime) {
+    const diffMs = new Date() - new Date(refusalDateTime);
     if(diffMs >= 0) responseHoursFixed = diffMs / (1000*60*60);
   }
 
   await addDoc(collection(db, 'rescue_orders'), {
-    manager, phone, ttn, reason, comment,
+    manager, phone, ttn, ttnOld, reason, comment,
     status: 'new',
-    ttnStatus, ttnStatusCode,
-    refusalDate: refusalDate || null,
-    refusalDateTime: refusalDateTime || null,
+    ttnStatus: '', ttnStatusCode: '',
+    oldTtnStatus, oldTtnStatusCode,
+    refusalDate, refusalDateTime,
     responseHoursFixed,
     date: new Date().toLocaleDateString('uk-UA'),
     timestamp: serverTimestamp()
   });
 
   document.getElementById('f-phone').value = '';
-  document.getElementById('f-ttn').value = '';
+  document.getElementById('f-ttn-old').value = '';
+  document.getElementById('f-ttn-new').value = '';
   document.getElementById('f-comment').value = '';
-  document.getElementById('f-refusal-date').value = '';
-  toast('Замовлення додано ✓');
+  toast(refusalDate ? `Додано ✓ Відмова зафіксована: ${refusalDate}` : 'Додано, але дату відмови не вдалось визначити');
 }
 
 // Render orders
@@ -533,18 +530,22 @@ window.renderOrders = function(resetPage) {
     <tr>
       <td style="color:#444;font-size:12px;">${start+i+1}</td>
       <td><strong>${o.manager}</strong></td>
-      <td style="color:#555;font-size:12px;">${o.refusalDate ? new Date(o.refusalDate).toLocaleDateString('uk-UA') : o.date}</td>
+      <td style="color:#555;font-size:12px;">${o.refusalDate ? new Date(o.refusalDate).toLocaleDateString('uk-UA') : '<span style="color:#444;">не визначено</span>'}</td>
       <td style="font-family:monospace;font-size:12px;">${o.phone}</td>
+      <td>
+        ${o.ttnOld
+          ? `<span style="font-family:monospace;font-size:11px;">${o.ttnOld}</span><br>${getTTNBadge(o.oldTtnStatusCode, o.oldTtnStatus)}`
+          : '<span style="color:#333;">—</span>'}
+      </td>
       <td>
         ${o.ttn
           ? `<span style="font-family:monospace;font-size:11px;">${o.ttn}</span>
-             <button class="btn btn-track btn-sm" style="margin-left:4px;" onclick="trackTTN('${o.fid}')">🔄</button>`
+             <button class="btn btn-track btn-sm" style="margin-left:4px;" onclick="trackTTN('${o.fid}')">🔄</button><br>${getTTNBadge(o.ttnStatusCode, o.ttnStatus)}`
           : '<span style="color:#333;">—</span>'}
       </td>
       <td style="font-size:12px;color:#888;">${REASON_LABELS[o.reason]||o.reason||'—'}</td>
       <td style="font-size:11px;">${getResponseTimeBadge(o)}</td>
       <td style="font-size:12px;color:#666;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.comment||'—'}</td>
-      <td style="font-size:11px;">${getTTNBadge(o.ttnStatusCode, o.ttnStatus)}</td>
       <td>
         ${isFinalNPStatus(o.ttnStatusCode)
           ? `<span class="badge ${STATUS_CLASS[o.status]||'badge-new'}">${STATUS_LABELS[o.status]||o.status}</span>`
@@ -605,11 +606,11 @@ window.openEdit = function(fid) {
   editId = fid;
   document.getElementById('e-manager').value = o.manager;
   document.getElementById('e-phone').value = o.phone;
+  document.getElementById('e-ttn-old').value = o.ttnOld||'';
   document.getElementById('e-ttn').value = o.ttn||'';
   document.getElementById('e-reason').value = o.reason||'size';
   document.getElementById('e-status').value = o.status||'new';
   document.getElementById('e-comment').value = o.comment||'';
-  document.getElementById('e-refusal-date').value = o.refusalDate||'';
   document.getElementById('edit-modal').style.display = 'flex';
 }
 
@@ -618,11 +619,11 @@ window.saveEdit = async function() {
   await updateDoc(doc(db, 'rescue_orders', editId), {
     manager: document.getElementById('e-manager').value,
     phone: document.getElementById('e-phone').value.trim(),
+    ttnOld: document.getElementById('e-ttn-old').value.trim(),
     ttn: document.getElementById('e-ttn').value.trim(),
     reason: document.getElementById('e-reason').value,
     status: document.getElementById('e-status').value,
-    comment: document.getElementById('e-comment').value.trim(),
-    refusalDate: document.getElementById('e-refusal-date').value || null
+    comment: document.getElementById('e-comment').value.trim()
   });
   document.getElementById('edit-modal').style.display = 'none';
   toast('Збережено ✓');
