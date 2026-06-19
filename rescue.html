@@ -187,6 +187,7 @@
       <option value="999999">Всі</option>
     </select>
     <button class="btn btn-track btn-sm" onclick="trackAll()">🔄 ОНОВИТИ ТТН</button>
+    <span id="last-track-time" style="font-size:11px;color:#444;align-self:center;">авто-оновлення кожні 3 хв</span>
   </div>
 
   <div class="table-wrap">
@@ -388,15 +389,68 @@ window.addOrder = async function() {
   const ttn = document.getElementById('f-ttn').value.trim();
   const reason = document.getElementById('f-reason').value;
   const comment = document.getElementById('f-comment').value.trim();
-  const refusalDate = document.getElementById('f-refusal-date').value;
+  const manualRefusalDate = document.getElementById('f-refusal-date').value;
 
   if(!phone) { toast('Введіть телефон!'); return; }
+
+  toast('Додаємо замовлення...');
+
+  // Пробуємо отримати точну дату/час відмови з API Нової Пошти за ТТН
+  let refusalDate = manualRefusalDate || null;
+  let refusalDateTime = null; // повний timestamp якщо вдалось дістати з НП
+  let ttnStatus = '';
+  let ttnStatusCode = '';
+
+  if(ttn) {
+    try {
+      const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: NP_API_KEY,
+          modelName: 'TrackingDocument',
+          calledMethod: 'getStatusDocuments',
+          methodProperties: { Documents: [{ DocumentNumber: ttn, Phone: phone||'' }] }
+        })
+      });
+      const json = await res.json();
+      const d = json?.data?.[0];
+      if(d) {
+        ttnStatus = d.Status || '';
+        ttnStatusCode = d.StatusCode || '';
+        // DateCreated / RecipientDateTime / поля з фактичною датою повернення/відмови
+        const npDate = d.ScheduledDeliveryDate || d.RecipientDateTime || d.DateCreated;
+        if(npDate) {
+          // НП повертає у форматі дд.мм.рррр гг:хх:сс — переводимо у ISO
+          const m = npDate.match(/(\d{2})\.(\d{2})\.(\d{4})\s*(\d{2}:\d{2}:\d{2})?/);
+          if(m) {
+            const iso = `${m[3]}-${m[2]}-${m[1]}${m[4] ? 'T'+m[4] : 'T00:00:00'}`;
+            const parsed = new Date(iso);
+            if(!isNaN(parsed.getTime())) {
+              refusalDateTime = parsed.toISOString();
+              if(!refusalDate) refusalDate = iso.split('T')[0];
+            }
+          }
+        }
+      }
+    } catch(e) { /* якщо НП недоступна — просто йдемо далі з ручною датою */ }
+  }
+
+  // Фіксуємо час реакції ОДРАЗУ — далі він не перерахується
+  let responseHoursFixed = null;
+  const refForCalc = refusalDateTime || (refusalDate ? refusalDate+'T00:00:00' : null);
+  if(refForCalc) {
+    const diffMs = new Date() - new Date(refForCalc);
+    if(diffMs >= 0) responseHoursFixed = diffMs / (1000*60*60);
+  }
 
   await addDoc(collection(db, 'rescue_orders'), {
     manager, phone, ttn, reason, comment,
     status: 'new',
-    ttnStatus: '',
+    ttnStatus, ttnStatusCode,
     refusalDate: refusalDate || null,
+    refusalDateTime: refusalDateTime || null,
+    responseHoursFixed,
     date: new Date().toLocaleDateString('uk-UA'),
     timestamp: serverTimestamp()
   });
@@ -411,20 +465,17 @@ window.addOrder = async function() {
 // Render orders
 // Час реакції: від дати відмови клієнта до дати додавання запису (дзвінок менеджера)
 function getResponseTimeBadge(o) {
-  if(!o.refusalDate) return `<span style="color:#333;">—</span>`;
-  const refusal = new Date(o.refusalDate);
-  const called = o.timestamp?.seconds ? new Date(o.timestamp.seconds * 1000) : new Date();
-  const diffMs = called - refusal;
-  if(diffMs < 0) return `<span style="color:#333;">—</span>`;
-  const diffHours = diffMs / (1000 * 60 * 60);
+  const diffHours = getResponseHours(o);
+  if(diffHours === null) return `<span style="color:#333;">—</span>`;
   const diffDays = Math.floor(diffHours / 24);
   const remHours = Math.round(diffHours % 24);
 
-  let label, color, bg;
+  let color, bg;
   if(diffHours <= 24) { color = '#00ffaa'; bg = '#0a2a1a'; }
   else if(diffHours <= 48) { color = '#f0ff00'; bg = '#2a2000'; }
   else { color = '#ff4444'; bg = '#2a0a0a'; }
 
+  let label;
   if(diffDays > 0) label = `${diffDays}д ${remHours}г`;
   else label = `${Math.round(diffHours)}г`;
 
@@ -432,8 +483,11 @@ function getResponseTimeBadge(o) {
 }
 
 function getResponseHours(o) {
+  // Якщо час реакції вже зафіксований при додаванні — використовуємо його, не перераховуємо
+  if(o.responseHoursFixed !== undefined && o.responseHoursFixed !== null) return o.responseHoursFixed;
+  // Фолбек для старих записів без зафіксованого значення
   if(!o.refusalDate) return null;
-  const refusal = new Date(o.refusalDate);
+  const refusal = new Date(o.refusalDateTime || (o.refusalDate+'T00:00:00'));
   const called = o.timestamp?.seconds ? new Date(o.timestamp.seconds * 1000) : new Date();
   const diffMs = called - refusal;
   if(diffMs < 0) return null;
@@ -656,8 +710,33 @@ async function autoTrackSilent() {
 }
 
 // Auto track every 3 minutes, silently
-setInterval(autoTrackSilent, 3 * 60 * 1000);
-setTimeout(autoTrackSilent, 4000);
+// Auto track every 3 minutes, silently + при поверненні на вкладку + видимий індикатор
+let lastAutoTrack = null;
+
+function updateLastTrackIndicator() {
+  const el = document.getElementById('last-track-time');
+  if(el && lastAutoTrack) {
+    const mins = Math.round((Date.now() - lastAutoTrack) / 60000);
+    el.textContent = mins < 1 ? 'оновлено щойно' : `оновлено ${mins} хв тому`;
+  }
+}
+
+async function autoTrackSilentWrapped() {
+  await autoTrackSilent();
+  lastAutoTrack = Date.now();
+  updateLastTrackIndicator();
+}
+
+setInterval(autoTrackSilentWrapped, 3 * 60 * 1000);
+setTimeout(autoTrackSilentWrapped, 4000);
+setInterval(updateLastTrackIndicator, 30000);
+
+// Якщо вкладка була неактивна і користувач повернувся — одразу оновлюємо
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible') {
+    autoTrackSilentWrapped();
+  }
+});
 
 // Stats
 function renderStats() {
