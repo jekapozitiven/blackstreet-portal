@@ -534,7 +534,8 @@ window.renderOrders = function(resetPage) {
       <td style="font-family:monospace;font-size:12px;">${o.phone}</td>
       <td>
         ${o.ttnOld
-          ? `<span style="font-family:monospace;font-size:11px;">${o.ttnOld}</span><br>${getTTNBadge(o.oldTtnStatusCode, o.oldTtnStatus)}`
+          ? `<span style="font-family:monospace;font-size:11px;">${o.ttnOld}</span>
+             <button class="btn btn-secondary btn-sm" style="margin-left:4px;padding:2px 6px;" onclick="debugTTN('${o.ttnOld}','${o.phone}')" title="Подивитись повну відповідь НП">🔍</button><br>${getTTNBadge(o.oldTtnStatusCode, o.oldTtnStatus)}`
           : '<span style="color:#333;">—</span>'}
       </td>
       <td>
@@ -670,6 +671,37 @@ window.trackTTN = async function(fid) {
       toast(d.Status);
     }
   } catch(e) { toast('Помилка НП'); }
+}
+
+// Показує сирий JSON від НП по ТТН — щоб знайти поле з точною датою/часом події
+window.debugTTN = async function(ttnNumber, phone) {
+  if(!ttnNumber) { toast('Немає ТТН'); return; }
+  toast('Запитуємо НП...');
+  try {
+    const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: NP_API_KEY,
+        modelName: 'TrackingDocument',
+        calledMethod: 'getStatusDocuments',
+        methodProperties: { Documents: [{ DocumentNumber: ttnNumber, Phone: phone||'' }] }
+      })
+    });
+    const json = await res.json();
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;width:700px;max-width:95vw;max-height:85vh;overflow:auto;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+          <strong style="color:#f0ff00;">Сира відповідь НП по ТТН ${ttnNumber}</strong>
+          <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#ff4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;">✕</button>
+        </div>
+        <pre style="font-size:11px;color:#aaffaa;white-space:pre-wrap;word-break:break-all;font-family:monospace;">${JSON.stringify(json, null, 2)}</pre>
+      </div>`;
+    modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  } catch(e) { toast('Помилка запиту'); }
 }
 
 window.trackAll = async function() {
