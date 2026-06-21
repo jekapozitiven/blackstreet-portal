@@ -418,12 +418,19 @@ window.addOrder = async function() {
     if(d) {
       oldTtnStatus = d.Status || '';
       oldTtnStatusCode = d.StatusCode || '';
-      // Поля з фактичною датою повернення/відмови від НП
-      const npDate = d.ScheduledDeliveryDate || d.RecipientDateTime || d.DateCreated;
+      // Точна дата/час відмови — поле НП "UndeliveryReasonsDate" (формат дд-мм-рррр гг:хх:сс)
+      const npDate = d.UndeliveryReasonsDate || d.ActualDeliveryDate;
       if(npDate) {
-        const m = npDate.match(/(\d{2})\.(\d{2})\.(\d{4})\s*(\d{2}:\d{2}:\d{2})?/);
+        // Формат: "19-06-2026 08:12:11" (дд-мм-рррр) АБО "2026-06-18 16:32:00" (рррр-мм-дд)
+        let iso = null;
+        let m = npDate.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}:\d{2}:\d{2})$/);
         if(m) {
-          const iso = `${m[3]}-${m[2]}-${m[1]}${m[4] ? 'T'+m[4] : 'T00:00:00'}`;
+          iso = `${m[3]}-${m[2]}-${m[1]}T${m[4]}`;
+        } else {
+          m = npDate.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})$/);
+          if(m) iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}`;
+        }
+        if(iso) {
           const parsed = new Date(iso);
           if(!isNaN(parsed.getTime())) {
             refusalDateTime = parsed.toISOString();
@@ -535,7 +542,9 @@ window.renderOrders = function(resetPage) {
       <td>
         ${o.ttnOld
           ? `<span style="font-family:monospace;font-size:11px;">${o.ttnOld}</span>
-             <button class="btn btn-secondary btn-sm" style="margin-left:4px;padding:2px 6px;" onclick="debugTTN('${o.ttnOld}','${o.phone}')" title="Подивитись повну відповідь НП">🔍</button><br>${getTTNBadge(o.oldTtnStatusCode, o.oldTtnStatus)}`
+             <button class="btn btn-secondary btn-sm" style="margin-left:4px;padding:2px 6px;" onclick="debugTTN('${o.ttnOld}','${o.phone}')" title="Подивитись повну відповідь НП">🔍</button>
+             ${!o.refusalDate ? `<button class="btn btn-track btn-sm" style="margin-left:4px;padding:2px 6px;" onclick="refreshRefusalDate('${o.fid}')" title="Перевірити точну дату відмови">🔄 дата</button>` : ''}
+             <br>${getTTNBadge(o.oldTtnStatusCode, o.oldTtnStatus)}`
           : '<span style="color:#333;">—</span>'}
       </td>
       <td>
@@ -641,6 +650,53 @@ window.deleteOrder = async function(fid) {
 }
 
 // Track TTN
+window.refreshRefusalDate = async function(fid) {
+  const o = orders.find(x => x.fid === fid);
+  if(!o || !o.ttnOld) { toast('Немає старої ТТН'); return; }
+  toast('Перевіряємо точну дату відмови...');
+  try {
+    const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: NP_API_KEY,
+        modelName: 'TrackingDocument',
+        calledMethod: 'getStatusDocuments',
+        methodProperties: { Documents: [{ DocumentNumber: o.ttnOld, Phone: o.phone||'' }] }
+      })
+    });
+    const json = await res.json();
+    const d = json?.data?.[0];
+    if(!d) { toast('Немає даних від НП'); return; }
+
+    const npDate = d.UndeliveryReasonsDate || d.ActualDeliveryDate;
+    if(!npDate) { toast('НП ще не зафіксувала точну дату відмови'); return; }
+
+    let iso = null;
+    let m = npDate.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}:\d{2}:\d{2})$/);
+    if(m) iso = `${m[3]}-${m[2]}-${m[1]}T${m[4]}`;
+    else {
+      m = npDate.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})$/);
+      if(m) iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}`;
+    }
+    if(!iso) { toast('Не вдалось розпарсити дату'); return; }
+
+    const parsed = new Date(iso);
+    if(isNaN(parsed.getTime())) { toast('Невірний формат дати'); return; }
+
+    const refusalDateTime = parsed.toISOString();
+    const refusalDate = iso.split('T')[0];
+    const diffMs = new Date() - parsed;
+    const responseHoursFixed = diffMs >= 0 ? diffMs / (1000*60*60) : 0;
+
+    await updateDoc(doc(db, 'rescue_orders', fid), {
+      refusalDate, refusalDateTime, responseHoursFixed,
+      oldTtnStatus: d.Status || '', oldTtnStatusCode: d.StatusCode || ''
+    });
+    toast(`✅ Дата відмови зафіксована: ${refusalDate}`);
+  } catch(e) { toast('Помилка запиту до НП'); }
+}
+
 window.trackTTN = async function(fid) {
   const o = orders.find(x => x.fid === fid);
   if(!o || !o.ttn) return;
@@ -738,6 +794,49 @@ async function autoTrackSilent() {
           status: newStatus
         });
       }
+    } catch(e) { /* silent fail, try next */ }
+  }
+
+  // Тихо пробуємо дотягнути дату відмови по старій ТТН, якщо ще не визначена
+  const withoutRefusalDate = orders.filter(o => o.ttnOld && !o.refusalDate);
+  for(const o of withoutRefusalDate) {
+    try {
+      const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: NP_API_KEY,
+          modelName: 'TrackingDocument',
+          calledMethod: 'getStatusDocuments',
+          methodProperties: { Documents: [{ DocumentNumber: o.ttnOld, Phone: o.phone||'' }] }
+        })
+      });
+      const json = await res.json();
+      const d = json?.data?.[0];
+      if(!d) continue;
+      const npDate = d.UndeliveryReasonsDate || d.ActualDeliveryDate;
+      if(!npDate) continue;
+
+      let iso = null;
+      let m = npDate.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}:\d{2}:\d{2})$/);
+      if(m) iso = `${m[3]}-${m[2]}-${m[1]}T${m[4]}`;
+      else {
+        m = npDate.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})$/);
+        if(m) iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}`;
+      }
+      if(!iso) continue;
+      const parsed = new Date(iso);
+      if(isNaN(parsed.getTime())) continue;
+
+      const refusalDateTime = parsed.toISOString();
+      const refusalDate = iso.split('T')[0];
+      const diffMs = new Date() - parsed;
+      const responseHoursFixed = diffMs >= 0 ? diffMs / (1000*60*60) : 0;
+
+      await updateDoc(doc(db, 'rescue_orders', o.fid), {
+        refusalDate, refusalDateTime, responseHoursFixed,
+        oldTtnStatus: d.Status || '', oldTtnStatusCode: d.StatusCode || ''
+      });
     } catch(e) { /* silent fail, try next */ }
   }
 }
