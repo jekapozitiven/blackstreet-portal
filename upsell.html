@@ -722,8 +722,61 @@ async function autoTrack() {
 setInterval(autoTrack, 15 * 60 * 1000);
 setTimeout(autoTrack, 5000);
 
+// ---- FILTER STATE SAVE/RESTORE ----
+function saveFilterState() {
+  const state = {
+    preset: document.getElementById('period-preset')?.value || '',
+    dateFrom: document.getElementById('date-from')?.value || '',
+    dateTo: document.getElementById('date-to')?.value || '',
+    typeStats: document.getElementById('filter-type-stats')?.value || '',
+    customVisible: document.getElementById('custom-dates')?.style?.display || 'none',
+    activeTab: document.querySelector('.tab.active')?.textContent?.trim() || ''
+  };
+  sessionStorage.setItem('bs_filter_state', JSON.stringify(state));
+}
+
+function restoreFilterState() {
+  try {
+    const state = JSON.parse(sessionStorage.getItem('bs_filter_state') || '{}');
+    if(state.dateFrom) document.getElementById('date-from').value = state.dateFrom;
+    if(state.dateTo) document.getElementById('date-to').value = state.dateTo;
+    if(state.preset) document.getElementById('period-preset').value = state.preset;
+    if(state.typeStats) document.getElementById('filter-type-stats').value = state.typeStats;
+    if(state.customVisible === 'flex') document.getElementById('custom-dates').style.display = 'flex';
+    // Відновлюємо активну вкладку
+    if(state.activeTab) {
+      const tabs = document.querySelectorAll('.tab');
+      tabs.forEach(t => {
+        if(t.textContent.trim() === state.activeTab) {
+          const tabNames = ['add','orders','managers'];
+          tabs.forEach((tab, i) => tab.classList.remove('active'));
+          document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+          t.classList.add('active');
+          const idx = Array.from(tabs).indexOf(t);
+          const pageId = ['add','orders','managers'][idx];
+          if(pageId) document.getElementById('tab-'+pageId)?.classList.add('active');
+        }
+      });
+    }
+  } catch(e) {}
+}
+
+// Зберігаємо стан при будь-якій зміні фільтрів
+const originalApplyPreset = window.applyPreset;
+window.applyPreset = function() { originalApplyPreset(); saveFilterState(); }
+
+const originalClearPeriod = window.clearPeriod;
+window.clearPeriod = function() { originalClearPeriod(); saveFilterState(); }
+
+const originalRenderManagers = window.renderManagers;
+window.renderManagers = function(x) { originalRenderManagers(x); saveFilterState(); }
+
+const originalSwitchTab = window.switchTab;
+window.switchTab = function(id) { originalSwitchTab(id); saveFilterState(); }
+
 // ---- INIT ----
 renderManagerSelects();
+restoreFilterState();
 </script>
 </body>
 </html>
