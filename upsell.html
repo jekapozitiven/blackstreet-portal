@@ -644,9 +644,10 @@ window.trackTTN = async function(fireId) {
       let newStatus = o.status;
       if(['9','11'].includes(sc)) newStatus = 'received';
       else if(['102','103','10'].includes(sc)) newStatus = 'refused';
-      else if(['3','4','5','6','7','8','101'].includes(sc)) newStatus = 'transit';
+      else if(['3','4','5','6','7','8','101','41','42','43','44','45','46','47','48','108','111','112'].includes(sc)) newStatus = 'transit';
+      else if(sc !== '1' && sc !== '2' && sc !== '') newStatus = 'transit'; // будь-який інший активний статус = в дорозі
       if(newStatus !== o.status) await updateDoc(doc(db, 'orders', fireId), { status: newStatus });
-      toast(`${o.ttn}: ${docData.Status}`);
+      toast(`[${sc}] ${docData.Status}`);
     }
   } catch(e) { toast('⚠️ Помилка запиту до НП'); }
 }
