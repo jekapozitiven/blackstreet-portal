@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Street — Портал</title>
+<link rel="icon" type="image/jpeg" href="bbb-club-logo4.jpg">
+<style>
+  
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0a;
+    color: #f0f0f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 32px 40px 24px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  .logo {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -1px;
+  }
+  .logo span { color: #f0ff00; }
+
+  .subtitle {
+    font-size: 13px;
+    color: #444;
+    margin-top: 4px;
+  }
+
+  main {
+    flex: 1;
+    padding: 48px 40px;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .apps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .app-card {
+    background: #111;
+    border: 1px solid #1e1e1e;
+    border-radius: 16px;
+    padding: 28px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .app-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: 16px;
+  }
+
+  .app-card.upsell::before { background: radial-gradient(circle at top left, rgba(240,255,0,0.06), transparent 60%); }
+  .app-card.reviews::before { background: radial-gradient(circle at top left, rgba(108,99,255,0.08), transparent 60%); }
+  .app-card.bonuses::before { background: radial-gradient(circle at top left, rgba(0,255,170,0.06), transparent 60%); }
+
+  .app-card:hover {
+    border-color: #333;
+    transform: translateY(-2px);
+  }
+  .app-card:hover::before { opacity: 1; }
+
+  .app-card.upsell:hover { border-color: rgba(240,255,0,0.3); }
+  .app-card.reviews:hover { border-color: rgba(108,99,255,0.4); }
+  .app-card.bonuses:hover { border-color: #222; }
+
+  .app-card.disabled { cursor: default; opacity: 0.5; }
+  .app-card.disabled:hover { transform: none; border-color: #1e1e1e; }
+
+  .app-icon {
+    font-size: 36px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .app-name {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .app-desc {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  .app-badge {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .badge-live { background: rgba(0,255,170,0.1); color: #00ffaa; border: 1px solid rgba(0,255,170,0.2); }
+  .badge-soon { background: #1a1a1a; color: #444; border: 1px solid #222; }
+
+  .arrow {
+    position: absolute;
+    top: 28px;
+    right: 28px;
+    font-size: 18px;
+    color: #333;
+    transition: all 0.2s;
+  }
+  .app-card:hover .arrow { color: #666; transform: translate(2px, -2px); }
+
+  footer {
+    padding: 24px 40px;
+    border-top: 1px solid #111;
+    font-size: 12px;
+    color: #333;
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 24px 20px 16px; }
+    .logo { font-size: 18px; }
+    main { padding: 32px 20px; }
+    .apps-grid { grid-template-columns: 1fr; }
+    footer { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BLACK STREET <span>//</span></div>
+  <div class="subtitle">Внутрішній портал менеджерів</div>
+</header>
+
+<main>
+  <div class="section-label">Оберіть додаток</div>
+  <div class="apps-grid">
+
+    <a href="upsell.html" class="app-card upsell">
+      <span class="app-icon">💰</span>
+      <div class="app-name">Допродажі</div>
+      <div class="app-desc">Трекер допродажів менеджерів. Статистика, ТТН, рейтинг, відстеження посилок.</div>
+      <div class="app-badge badge-live">● Активно</div>
+      <div class="arrow">↗</div>
+    </a>
+
+    <a href="reviews.html" class="app-card reviews">
+      <span class="app-icon">⭐</span>
+      <div class="app-name">Відгуки</div>
+      <div class="app-desc">Трекер відгуків клієнтів. Контроль якості обслуговування по менеджерах.</div>
+      <div class="app-badge badge-live">● Активно</div>
+      <div class="arrow">↗</div>
+    </a>
+
+    <div class="app-card bonuses disabled">
+      <span class="app-icon">🎁</span>
+      <div class="app-name">Бонуси</div>
+      <div class="app-desc">Система нарахування бонусів менеджерам за продажі та показники.</div>
+      <div class="app-badge badge-soon">Скоро</div>
+    </div>
+
+    <a href="rescue.html" class="app-card" style="border-color:#1e1e1e;">
+      <span class="app-icon">🛟</span>
+      <div class="app-name">Спасіння замовлень</div>
+      <div class="app-desc">Відстеження відмов та повторних відправок. Контроль % спасіння по менеджерах.</div>
+      <div class="app-badge badge-live">● Активно</div>
+      <div class="arrow">↗</div>
+    </a>
+
+    <a href="kpi.html" class="app-card" style="border-color:#1e1e1e;">
+      <span class="app-icon">📊</span>
+      <div class="app-name">KPI · Прогрес</div>
+      <div class="app-desc">Трекер виконання плану по менеджерах. Апрув, допродажі, прибуток, успішні замовлення.</div>
+      <div class="app-badge badge-live">● Активно</div>
+      <div class="arrow">↗</div>
+    </a>
+
+  </div>
+</main>
+
+<footer>
+  Black Street © 2026 — Внутрішній портал
+</footer>
+
+</body>
+</html>
