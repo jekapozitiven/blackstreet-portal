@@ -60,7 +60,7 @@ select option{background:var(--surface2)}
 .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-top:10px}
 .alert.success{background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.25)}
 .alert.error{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.25)}
-.refusal-banner{background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(201,168,76,.03));border:1px solid rgba(201,168,76,.2);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+
 .log-item{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px;align-items:flex-start;flex-wrap:wrap}
 .log-item:last-child{border-bottom:none}
 .log-date{color:var(--muted);min-width:80px;font-size:12px}
@@ -85,14 +85,6 @@ select option{background:var(--surface2)}
   <div class="month-bar">
     <span class="month-label" id="dash-month-label"></span>
     <select id="dash-month" onchange="renderDashboard()"></select>
-  </div>
-  <div class="refusal-banner">
-    <span style="font-size:13px;color:var(--muted)">⚙️ Коефіцієнт відмов на пошті:</span>
-    <div style="display:flex;align-items:center;gap:8px">
-      <input type="number" id="refusal-rate" min="0" max="100" value="30" style="width:75px;text-align:center;font-weight:700;color:var(--gold)" onchange="saveRefusalRate();renderDashboard()"/>
-      <span style="color:var(--muted);font-size:13px">%</span>
-    </div>
-    <span style="font-size:12px;color:var(--muted)">Сума прибутку коригується автоматично (тільки цей показник)</span>
   </div>
   <div class="mgr-tabs" id="dash-mgr-tabs"></div>
   <div class="kpi-grid" id="dash-kpi-grid"></div>
@@ -183,8 +175,6 @@ const getEntries=()=>{try{return JSON.parse(localStorage.getItem('kpi_e')||'[]')
 const saveEntries=d=>localStorage.setItem('kpi_e',JSON.stringify(d));
 const getPlans=()=>{try{return JSON.parse(localStorage.getItem('kpi_p')||'[]')}catch{return[]}};
 const savePlans=d=>localStorage.setItem('kpi_p',JSON.stringify(d));
-const getRefusal=()=>parseFloat(localStorage.getItem('kpi_r')||'30');
-const saveRefusalRate=()=>localStorage.setItem('kpi_r',document.getElementById('refusal-rate').value);
 
 let activeMgr='all';
 
@@ -226,7 +216,6 @@ function initSelects(){
     s.innerHTML=opts.map((o,i)=>`<option value="${o.val}"${i===0?' selected':''}>${o.lbl}</option>`).join('');
   });
   document.getElementById('e-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('refusal-rate').value=getRefusal();
 }
 
 function fmtN(n,unit){
@@ -235,11 +224,6 @@ function fmtN(n,unit){
 }
 
 function pctColor(p){return p>=100?'var(--green)':p>=70?'var(--yellow)':'var(--red)';}
-
-function adj(val,key,refusal){
-  const k=KPI.find(x=>x.key===key);
-  return(k&&k.adj)?val*(1-refusal/100):val;
-}
 
 function getFactAvg(manager,month){
   const es=getEntries().filter(e=>e.manager===manager&&e.date.startsWith(month));
@@ -259,8 +243,8 @@ function getPlan(manager,month){return getPlans().find(p=>p.manager===manager&&p
 
 function renderDashboard(){
   const month=document.getElementById('dash-month').value;
-  const refusal=getRefusal();
-  document.getElementById('refusal-rate').value=refusal;
+
+
   const d=new Date(month+'-01');
   document.getElementById('dash-month-label').textContent=d.toLocaleString('uk',{month:'long',year:'numeric'});
 
@@ -278,13 +262,13 @@ function renderDashboard(){
     const plan=getPlan(activeMgr,month);
     grid.innerHTML=KPI.map(kpi=>{
       const raw=fact?fact[kpi.key]:null;
-      const af=raw!==null?(kpi.adj?adj(raw,kpi.key,refusal):raw):null;
+      const af=raw;
       const pv=plan?parseFloat(plan[kpi.key]||0):null;
       const pct=(af!==null&&pv)?Math.min(Math.round(af/pv*100),999):null;
       const col=pct!==null?pctColor(pct):'var(--muted)';
       const remaining=pv&&af!==null?pv-af:null;
       return`<div class="kpi-card" style="--accent-color:${kpi.color}">
-        <div class="kpi-name">${kpi.label}${kpi.adj?' <span style="color:var(--gold);font-size:10px">~скор.</span>':''}</div>
+        <div class="kpi-name">${kpi.label}</div>
         <div class="kpi-values">
           <span class="kpi-fact" style="color:${kpi.color}">${af!==null?fmtN(af,kpi.unit):'—'}</span>
           ${pv?`<span class="kpi-plan">/ ${fmtN(pv,kpi.unit)}</span>`:''}
@@ -304,7 +288,6 @@ function renderDashboard(){
             :`Виконання плану: <b style="color:${col}">${pct}%</b>`}
         </div>`:''}
         `:'<div style="font-size:12px;color:var(--muted)">план не встановлено</div>'}
-        ${kpi.adj&&raw!==null?`<div class="kpi-adj">До коригування: ${fmtN(raw,kpi.unit)}</div>`:''}
         ${fact?`<div class="kpi-adj">Актуально на: ${fact.lastDate}</div>`:''}
       </div>`;
     }).join('');
@@ -323,7 +306,7 @@ function renderDashboard(){
         <td><strong>${m}</strong>${fact?`<div style="font-size:11px;color:var(--muted);margin-top:2px">ост. ${fact.lastDate}</div>`:''}</td>
         ${KPI.map(kpi=>{
           const raw=fact?fact[kpi.key]:null;
-          const af=raw!==null?(kpi.adj?adj(raw,kpi.key,refusal):raw):null;
+          const af=raw;
           const pv=plan?parseFloat(plan[kpi.key]||0):null;
           const pct=(af!==null&&pv)?Math.min(Math.round(af/pv*100),999):null;
           const col=pct!==null?pctColor(pct):'var(--muted)';
@@ -470,7 +453,7 @@ function deletePlan(manager,month){
 function renderHistory(){
   const manager=document.getElementById('h-manager').value;
   const month=document.getElementById('h-month').value;
-  const refusal=getRefusal();
+
   let entries=getEntries().filter(e=>e.date.startsWith(month));
   if(manager!=='all')entries=entries.filter(e=>e.manager===manager);
   entries.sort((a,b)=>b.date.localeCompare(a.date));
@@ -484,8 +467,8 @@ function renderHistory(){
         ${KPI.map(kpi=>{
           const raw=parseFloat(e[kpi.key]||0);
           if(!e[kpi.key])return'';
-          const af=kpi.adj?adj(raw,kpi.key,refusal):raw;
-          return`<span style="color:var(--muted)">${kpi.label}: <b style="color:${kpi.color}">${fmtN(af,kpi.unit)}</b>${kpi.adj?` <span style="color:var(--gold);font-size:10px">~скор.</span>`:''}</span>`;
+          const af=raw;
+          return`<span style="color:var(--muted)">${kpi.label}: <b style="color:${kpi.color}">${fmtN(af,kpi.unit)}</b></span>`;
         }).filter(Boolean).join('')}
       </div>
     </div>`).join('');
