@@ -108,7 +108,7 @@ select option{background:var(--surface2)}
     <div class="card-title">✏️ Внести щоденні дані</div>
     <div class="form-row">
       <div class="form-group"><label>Менеджер</label>
-        <select id="e-manager"><option>Марина</option><option>Поліна</option><option>Софія</option></select></div>
+        <select id="e-manager"></select></div>
       <div class="form-group"><label>Дата</label><input type="date" id="e-date"/></div>
     </div>
     <div class="form-row">
@@ -126,11 +126,22 @@ select option{background:var(--surface2)}
 <!-- PLANS -->
 <div class="page" id="page-plan">
   <div class="card">
+    <div class="card-title">👥 Менеджери</div>
+    <div class="form-row" style="align-items:flex-end;margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0"><label>Новий менеджер</label>
+        <input type="text" id="new-manager" placeholder="Ім'я менеджера"/></div>
+      <div style="margin-bottom:0"><button class="btn" onclick="addManager()">+ Додати</button></div>
+    </div>
+    <div id="managers-list" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"></div>
+    <div id="mgr-msg"></div>
+  </div>
+
+  <div class="card">
     <div class="card-title">🎯 Встановити план на місяць</div>
     <div class="form-row">
       <div class="form-group"><label>Менеджер</label>
-        <select id="p-manager"><option>Марина</option><option>Поліна</option><option>Софія</option></select></div>
-      <div class="form-group"><label>Місяць</label><input type="month" id="p-month"/></div>
+        <select id="p-manager"></select></div>
+      <div class="form-group"><label>Місяць</label><select id="p-month"></select></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>% Апрув (план)</label><input type="number" id="p-approve" placeholder="напр. 80" min="0" max="100" step="0.1"/></div>
@@ -149,9 +160,7 @@ select option{background:var(--surface2)}
   <div class="card">
     <div class="form-row" style="margin-bottom:0">
       <div class="form-group"><label>Менеджер</label>
-        <select id="h-manager" onchange="renderHistory()">
-          <option value="all">Всі</option><option>Марина</option><option>Поліна</option><option>Софія</option>
-        </select></div>
+        <select id="h-manager" onchange="renderHistory()"></select></div>
       <div class="form-group"><label>Місяць</label><select id="h-month" onchange="renderHistory()"></select></div>
     </div>
   </div>
@@ -159,7 +168,10 @@ select option{background:var(--surface2)}
 </div>
 
 <script>
-const MANAGERS=['Марина','Поліна','Софія'];
+const DEFAULT_MANAGERS=['Марина','Софія'];
+const getManagers=()=>{try{const m=JSON.parse(localStorage.getItem('kpi_managers'));return Array.isArray(m)&&m.length?m:DEFAULT_MANAGERS;}catch{return DEFAULT_MANAGERS;}};
+const saveManagers=d=>localStorage.setItem('kpi_managers',JSON.stringify(d));
+let MANAGERS=getManagers();
 const KPI=[
   {key:'approve',label:'% Апрув',unit:'%',color:'#60a5fa',adj:false},
   {key:'upsell',label:'% Допродажів',unit:'%',color:'#c084fc',adj:false},
@@ -183,11 +195,23 @@ function showPage(page,el){
   el.classList.add('active');
   if(page==='dashboard')renderDashboard();
   if(page==='enter')renderRecentEntries();
-  if(page==='plan')renderPlansList();
+  if(page==='plan'){renderPlansList();renderManagersList();}
   if(page==='history')renderHistory();
 }
 
+function fillManagerSelects(){
+  MANAGERS=getManagers();
+  const opts=MANAGERS.map(m=>`<option>${m}</option>`).join('');
+  ['e-manager','p-manager'].forEach(id=>{
+    const s=document.getElementById(id);
+    if(s)s.innerHTML=opts;
+  });
+  const h=document.getElementById('h-manager');
+  if(h)h.innerHTML='<option value="all">Всі</option>'+opts;
+}
+
 function initSelects(){
+  fillManagerSelects();
   const now=new Date();
   const opts=[];
   for(let i=0;i<6;i++){
@@ -196,12 +220,11 @@ function initSelects(){
     const lbl=d.toLocaleString('uk',{month:'long',year:'numeric'});
     opts.push({val,lbl});
   }
-  ['dash-month','h-month'].forEach(id=>{
+  ['dash-month','h-month','p-month'].forEach(id=>{
     const s=document.getElementById(id);
     if(!s)return;
     s.innerHTML=opts.map((o,i)=>`<option value="${o.val}"${i===0?' selected':''}>${o.lbl}</option>`).join('');
   });
-  document.getElementById('p-month').value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   document.getElementById('e-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('refusal-rate').value=getRefusal();
 }
@@ -221,10 +244,13 @@ function adj(val,key,refusal){
 function getFactAvg(manager,month){
   const es=getEntries().filter(e=>e.manager===manager&&e.date.startsWith(month));
   if(!es.length)return null;
-  const r={entriesCount:es.length,lastDate:es.slice().sort((a,b)=>b.date.localeCompare(a.date))[0].date};
+  // Sort by date descending — latest first
+  es.sort((a,b)=>b.date.localeCompare(a.date));
+  const latest=es[0];
+  const r={entriesCount:es.length,lastDate:latest.date};
+  // Take values from the LATEST entry (not average)
   KPI.forEach(k=>{
-    const vs=es.map(e=>parseFloat(e[k.key]||0)).filter(v=>!isNaN(v)&&v>0);
-    r[k.key]=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:0;
+    r[k.key]=parseFloat(latest[k.key]||0);
   });
   return r;
 }
@@ -272,9 +298,14 @@ function renderDashboard(){
             ?`До плану: <b style="color:var(--yellow)">+${Math.round(remaining).toLocaleString('uk')} грн</b>`
             :`<b style="color:var(--green)">✅ План виконано на ${pct}%</b>`}
         </div>`:''}
+        ${kpi.key!=='profit'&&pct!==null?`<div class="kpi-adj" style="margin-top:8px">
+          ${pct>=100
+            ?`<b style="color:var(--green)">✅ Перевиконання! Тримай темп</b>`
+            :`Виконання плану: <b style="color:${col}">${pct}%</b>`}
+        </div>`:''}
         `:'<div style="font-size:12px;color:var(--muted)">план не встановлено</div>'}
         ${kpi.adj&&raw!==null?`<div class="kpi-adj">До коригування: ${fmtN(raw,kpi.unit)}</div>`:''}
-        ${fact?`<div class="kpi-adj">Оновлено: ${fact.lastDate} · ${fact.entriesCount} зап.</div>`:''}
+        ${fact?`<div class="kpi-adj">Актуально на: ${fact.lastDate}</div>`:''}
       </div>`;
     }).join('');
   } else {
@@ -284,7 +315,7 @@ function renderDashboard(){
   // Overview table
   const mgrs=activeMgr==='all'?MANAGERS:[activeMgr];
   document.getElementById('overview-table').innerHTML=`
-    <thead><tr><th>Менеджер</th>${KPI.map(k=>`<th>${k.label}</th>`).join('')}<th>Записів</th></tr></thead>
+    <thead><tr><th>Менеджер</th>${KPI.map(k=>`<th>${k.label}</th>`).join('')}<th>Актуально</th></tr></thead>
     <tbody>${mgrs.map(m=>{
       const fact=getFactAvg(m,month);
       const plan=getPlan(m,month);
@@ -310,7 +341,7 @@ function renderDashboard(){
             :'<div style="font-size:11px;color:var(--muted)">без плану</div>'}
           `:'<span style="color:var(--muted)">—</span>'}</td>`;
         }).join('')}
-        <td style="color:var(--muted)">${fact?fact.entriesCount:'—'}</td>
+        <td style="color:var(--muted);font-size:12px">${fact?fact.lastDate:'—'}</td>
       </tr>`;
     }).join('')}</tbody>`;
 }
@@ -359,6 +390,39 @@ function deleteEntry(manager,date){
   if(!confirm('Видалити?'))return;
   saveEntries(getEntries().filter(e=>!(e.manager===manager&&e.date===date)));
   renderRecentEntries();
+}
+
+function addManager(){
+  const name=document.getElementById('new-manager').value.trim();
+  const msgEl=document.getElementById('mgr-msg');
+  if(!name){msgEl.innerHTML='<div class="alert error">Введіть ім\'я</div>';return;}
+  const list=getManagers();
+  if(list.includes(name)){msgEl.innerHTML='<div class="alert error">Такий менеджер вже є</div>';return;}
+  list.push(name);
+  saveManagers(list);
+  document.getElementById('new-manager').value='';
+  fillManagerSelects();
+  renderManagersList();
+  msgEl.innerHTML='<div class="alert success">✅ Додано!</div>';
+  setTimeout(()=>msgEl.innerHTML='',2500);
+}
+
+function deleteManager(name){
+  if(!confirm('Видалити менеджера '+name+'? Його записи та плани залишаться в історії.'))return;
+  saveManagers(getManagers().filter(m=>m!==name));
+  fillManagerSelects();
+  renderManagersList();
+}
+
+function renderManagersList(){
+  const el=document.getElementById('managers-list');
+  if(!el)return;
+  el.innerHTML=getManagers().map(m=>`
+    <div style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 8px 6px 14px;font-size:13px">
+      <span>${m}</span>
+      <button onclick="deleteManager('${m}')" style="background:rgba(248,113,113,0.15);color:var(--red);border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:11px;line-height:1">✕</button>
+    </div>
+  `).join('');
 }
 
 function savePlan(){
