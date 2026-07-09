@@ -169,12 +169,23 @@
         <option value="transit">В дорозі</option>
         <option value="received">Отримано</option>
         <option value="refused">Відмова</option>
+        <option value="no_ttn">📭 Без ТТН</option>
       </select>
       <select id="filter-type" onchange="renderOrders()">
         <option value="">Всі типи</option>
         <option value="Повітря">Повітря</option>
         <option value="Товар">Товар</option>
       </select>
+      <select id="filter-period" onchange="applyOrdersPeriod()">
+        <option value="">Весь час</option>
+        <option value="today">Сьогодні</option>
+        <option value="week">Цей тиждень</option>
+        <option value="month">Цей місяць</option>
+        <option value="prevmonth">Минулий місяць</option>
+        <option value="custom">Вибрати діапазон</option>
+      </select>
+      <input type="date" id="ord-date-from" onchange="renderOrders()" style="display:none;min-width:130px" />
+      <input type="date" id="ord-date-to" onchange="renderOrders()" style="display:none;min-width:130px" />
       <select id="per-page" onchange="renderOrders()" style="min-width:120px;">
         <option value="25">25 на стор.</option>
         <option value="50" selected>50 на стор.</option>
@@ -376,10 +387,30 @@ window.renderOrders = function renderOrders(resetPage) {
   const fs = document.getElementById('filter-status').value;
   const ft = document.getElementById('filter-type').value;
   const perPage = parseInt(document.getElementById('per-page')?.value || '50');
+  const pFrom = document.getElementById('ord-date-from')?.value;
+  const pTo = document.getElementById('ord-date-to')?.value;
   let filtered = orders;
   if(fm) filtered = filtered.filter(o => o.manager === fm);
-  if(fs) filtered = filtered.filter(o => o.status === fs);
+  if(fs === 'no_ttn') filtered = filtered.filter(o => !o.ttn || o.ttn.trim() === '');
+  else if(fs) filtered = filtered.filter(o => o.status === fs);
   if(ft) filtered = filtered.filter(o => o.type === ft);
+
+  // Period filter
+  if(pFrom || pTo) {
+    filtered = filtered.filter(o => {
+      let d;
+      if(o.timestamp?.seconds) d = new Date(o.timestamp.seconds * 1000);
+      else if(o.date) {
+        const p = o.date.split('.');
+        if(p.length === 3) d = new Date(`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`);
+      }
+      if(!d) return false;
+      const ds = d.toISOString().split('T')[0];
+      if(pFrom && ds < pFrom) return false;
+      if(pTo && ds > pTo) return false;
+      return true;
+    });
+  }
 
   const statusLabels = { new:'Нове', transit:'В дорозі', received:'Отримано', refused:'Відмова' };
   const statusClass = { new:'badge-new', transit:'badge-transit', received:'badge-received', refused:'badge-refused' };
@@ -534,25 +565,148 @@ window.trackTTN = async function(fireId) {
     const json = await res.json();
     const docData = json?.data?.[0];
     if(docData) {
-      const sc = String(docData.StatusCode);
-      let newStatus = o.status;
-      if(['9','11'].includes(sc)) newStatus = 'received';
-      else if(['102','103','10'].includes(sc)) newStatus = 'refused';
-      else if(['3','4','5','6','7','8','101'].includes(sc)) newStatus = 'transit';
+      const newStatus = mapNPStatus(String(docData.StatusCode), o.status);
       if(newStatus !== o.status) await updateDoc(doc(db, 'orders', fireId), { status: newStatus });
       toast(`${o.ttn}: ${docData.Status}`);
     }
   } catch(e) { toast('⚠️ Помилка запиту до НП'); }
 }
 
+function mapNPStatus(sc, current) {
+  if(['9','10','11'].includes(sc)) return 'received';
+  if(['102','103','108'].includes(sc)) return 'refused';
+  if(['3','4','5','6','7','8','101','41','12'].includes(sc)) return 'transit';
+  return current;
+}
+
 window.trackAll = async function() {
-  const withTTN = orders.filter(o => o.ttn && o.status !== 'received' && o.status !== 'refused');
+  const withTTN = orders.filter(o => o.ttn && o.ttn.trim() && o.status !== 'received' && o.status !== 'refused');
   if(!withTTN.length) { toast('Немає ТТН для відстеження'); return; }
-  for(const o of withTTN) await trackTTN(o.fireId);
-  toast(`Оновлено ${withTTN.length} ТТН`);
+
+  const btn = document.querySelector('.btn-track');
+  const origText = btn ? btn.textContent : '';
+  if(btn) { btn.disabled = true; btn.textContent = '⏳ Оновлюємо...'; }
+
+  const norm = t => String(t || '').replace(/\s+/g, '').trim();
+
+  async function fetchNP(docs) {
+    const res = await fetch('https://api.novaposhta.ua/v2.0/json/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: '23a11029ed799942ec9015a4cf4c7ea3',
+        modelName: 'TrackingDocument',
+        calledMethod: 'getStatusDocuments',
+        methodProperties: { Documents: docs }
+      })
+    });
+    const json = await res.json();
+    return json?.data || [];
+  }
+
+  try {
+    let checked = 0, changed = 0, notFound = [];
+    const chunkSize = 90;
+
+    for(let i = 0; i < withTTN.length; i += chunkSize) {
+      const chunk = withTTN.slice(i, i + chunkSize);
+      const docs = chunk.map(o => ({ DocumentNumber: norm(o.ttn), Phone: o.phone || '' }));
+
+      let results = [];
+      try { results = await fetchNP(docs); }
+      catch(e) { results = []; }
+
+      // Build lookup by normalized number from NP response
+      const byNum = {};
+      for(const d of results) {
+        const key = norm(d.Number || d.DocumentNumber);
+        if(key) byNum[key] = d;
+      }
+
+      const updatePromises = [];
+      for(const ord of chunk) {
+        const d = byNum[norm(ord.ttn)];
+        if(!d || !d.StatusCode) { notFound.push(ord); continue; }
+        checked++;
+        const newStatus = mapNPStatus(String(d.StatusCode), ord.status);
+        if(newStatus !== ord.status) {
+          changed++;
+          ord.status = newStatus;
+          updatePromises.push(updateDoc(doc(db, 'orders', ord.fireId), { status: newStatus }));
+        }
+      }
+      await Promise.all(updatePromises);
+      renderOrders();
+    }
+
+    // Retry any that weren't found — one by one
+    if(notFound.length) {
+      const retryPromises = [];
+      for(const ord of notFound) {
+        try {
+          const r = await fetchNP([{ DocumentNumber: norm(ord.ttn), Phone: ord.phone || '' }]);
+          const d = r[0];
+          if(d && d.StatusCode) {
+            checked++;
+            const newStatus = mapNPStatus(String(d.StatusCode), ord.status);
+            if(newStatus !== ord.status) {
+              changed++;
+              ord.status = newStatus;
+              retryPromises.push(updateDoc(doc(db, 'orders', ord.fireId), { status: newStatus }));
+            }
+          }
+        } catch(e) {}
+      }
+      await Promise.all(retryPromises);
+      renderOrders();
+    }
+
+    const failed = withTTN.length - checked;
+    toast(`✅ Перевірено ${checked}, оновлено ${changed}${failed > 0 ? `, не знайдено ${failed}` : ''}`);
+  } catch(e) {
+    toast('⚠️ Помилка запиту до НП');
+  } finally {
+    if(btn) { btn.disabled = false; btn.textContent = origText; }
+  }
 }
 
 // ---- DATE FILTER ----
+window.applyOrdersPeriod = function() {
+  const v = document.getElementById('filter-period').value;
+  const fromEl = document.getElementById('ord-date-from');
+  const toEl = document.getElementById('ord-date-to');
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+  if(v === 'custom') {
+    fromEl.style.display = ''; toEl.style.display = '';
+    return;
+  }
+  if(v === '') {
+    fromEl.style.display = 'none'; toEl.style.display = 'none';
+    fromEl.value = ''; toEl.value = '';
+    renderOrders(true); return;
+  }
+  fromEl.style.display = 'none'; toEl.style.display = 'none';
+
+  if(v === 'today') {
+    fromEl.value = fmt(today); toEl.value = fmt(today);
+  } else if(v === 'week') {
+    const mon = new Date(today);
+    const day = today.getDay() || 7;
+    mon.setDate(today.getDate() - day + 1);
+    fromEl.value = fmt(mon); toEl.value = fmt(today);
+  } else if(v === 'month') {
+    fromEl.value = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+    toEl.value = fmt(today);
+  } else if(v === 'prevmonth') {
+    fromEl.value = fmt(new Date(today.getFullYear(), today.getMonth()-1, 1));
+    toEl.value = fmt(new Date(today.getFullYear(), today.getMonth(), 0));
+  }
+  renderOrders(true);
+}
+
 window.applyPreset = function() {
   const v = document.getElementById('period-preset').value;
   const customDiv = document.getElementById('custom-dates');
