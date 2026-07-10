@@ -159,11 +159,25 @@ select option{background:var(--surface2)}
   <div class="card"><div class="card-title">Записи</div><div id="history-list"></div></div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, doc, onSnapshot,
+  addDoc, updateDoc, deleteDoc, setDoc, getDocs, query, where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC-D2oLeBlbN3nTQ_Mi8gOQ2SA7aPSmIAE",
+  authDomain: "apsell-48b8e.firebaseapp.com",
+  projectId: "apsell-48b8e",
+  storageBucket: "apsell-48b8e.firebasestorage.app",
+  messagingSenderId: "1051142332623",
+  appId: "1:1051142332623:web:af40b1725ed6da8afed7ba"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const DEFAULT_MANAGERS=['Марина','Софія'];
-const getManagers=()=>{try{const m=JSON.parse(localStorage.getItem('kpi_managers'));return Array.isArray(m)&&m.length?m:DEFAULT_MANAGERS;}catch{return DEFAULT_MANAGERS;}};
-const saveManagers=d=>localStorage.setItem('kpi_managers',JSON.stringify(d));
-let MANAGERS=getManagers();
 const KPI=[
   {key:'approve',label:'% Апрув',unit:'%',color:'#60a5fa',adj:false},
   {key:'upsell',label:'% Допродажів',unit:'%',color:'#c084fc',adj:false},
@@ -171,12 +185,67 @@ const KPI=[
   {key:'success',label:'% Успішних',unit:'%',color:'#4ade80',adj:false},
 ];
 
-const getEntries=()=>{try{return JSON.parse(localStorage.getItem('kpi_e')||'[]')}catch{return[]}};
-const saveEntries=d=>localStorage.setItem('kpi_e',JSON.stringify(d));
-const getPlans=()=>{try{return JSON.parse(localStorage.getItem('kpi_p')||'[]')}catch{return[]}};
-const savePlans=d=>localStorage.setItem('kpi_p',JSON.stringify(d));
+// ---- LOCAL CACHES (synced from Firebase in realtime) ----
+let ENTRIES = [];   // {fireId, manager, date, approve, upsell, profit, success}
+let PLANS = [];     // {fireId, manager, month, approve, upsell, profit, success}
+let MANAGERS = [...DEFAULT_MANAGERS];
+
+// Read helpers (from cache)
+const getEntries = () => ENTRIES;
+const getPlans = () => PLANS;
+const getManagers = () => MANAGERS.length ? MANAGERS : DEFAULT_MANAGERS;
 
 let activeMgr='all';
+
+// ---- FIREBASE REALTIME SYNC ----
+onSnapshot(collection(db, 'kpi_entries'), snap => {
+  ENTRIES = snap.docs.map(d => ({ fireId: d.id, ...d.data() }));
+  refreshCurrentView();
+});
+onSnapshot(collection(db, 'kpi_plans'), snap => {
+  PLANS = snap.docs.map(d => ({ fireId: d.id, ...d.data() }));
+  refreshCurrentView();
+});
+onSnapshot(doc(db, 'kpi_config', 'managers'), snap => {
+  const data = snap.data();
+  MANAGERS = (data && Array.isArray(data.list) && data.list.length) ? data.list : [...DEFAULT_MANAGERS];
+  fillManagerSelects();
+  refreshCurrentView();
+});
+
+function refreshCurrentView(){
+  const active = document.querySelector('.page.active');
+  if(!active) return;
+  const id = active.id;
+  if(id==='page-dashboard') renderDashboard();
+  else if(id==='page-enter') renderRecentEntries();
+  else if(id==='page-plan'){ renderPlansList(); renderManagersList(); }
+  else if(id==='page-history') renderHistory();
+}
+
+// ---- FIREBASE WRITES ----
+async function fbSaveEntry(entry){
+  // find existing by manager+date
+  const existing = ENTRIES.find(e => e.manager===entry.manager && e.date===entry.date);
+  if(existing) await updateDoc(doc(db,'kpi_entries',existing.fireId), entry);
+  else await addDoc(collection(db,'kpi_entries'), entry);
+}
+async function fbDeleteEntry(manager,date){
+  const existing = ENTRIES.find(e => e.manager===manager && e.date===date);
+  if(existing) await deleteDoc(doc(db,'kpi_entries',existing.fireId));
+}
+async function fbSavePlan(plan){
+  const existing = PLANS.find(p => p.manager===plan.manager && p.month===plan.month);
+  if(existing) await updateDoc(doc(db,'kpi_plans',existing.fireId), plan);
+  else await addDoc(collection(db,'kpi_plans'), plan);
+}
+async function fbDeletePlan(manager,month){
+  const existing = PLANS.find(p => p.manager===manager && p.month===month);
+  if(existing) await deleteDoc(doc(db,'kpi_plans',existing.fireId));
+}
+async function fbSaveManagers(list){
+  await setDoc(doc(db,'kpi_config','managers'), { list });
+}
 
 function showPage(page,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -190,8 +259,7 @@ function showPage(page,el){
 }
 
 function fillManagerSelects(){
-  MANAGERS=getManagers();
-  const opts=MANAGERS.map(m=>`<option>${m}</option>`).join('');
+  const opts=getManagers().map(m=>`<option>${m}</option>`).join('');
   ['e-manager','p-manager'].forEach(id=>{
     const s=document.getElementById(id);
     if(s)s.innerHTML=opts;
@@ -331,7 +399,7 @@ function renderDashboard(){
 
 function setMgrTab(key){activeMgr=key;renderDashboard();}
 
-function saveEntry(){
+async function saveEntry(){
   const manager=document.getElementById('e-manager').value;
   const date=document.getElementById('e-date').value;
   const approve=document.getElementById('e-approve').value;
@@ -341,18 +409,18 @@ function saveEntry(){
   const msgEl=document.getElementById('e-msg');
   if(!date){msgEl.innerHTML='<div class="alert error">Виберіть дату</div>';return;}
   if(!approve&&!upsell&&!profit&&!success){msgEl.innerHTML='<div class="alert error">Заповніть хоча б одне поле</div>';return;}
-  const entries=getEntries();
-  const idx=entries.findIndex(e=>e.manager===manager&&e.date===date);
   const entry={manager,date,approve,upsell,profit,success,updatedAt:new Date().toISOString()};
-  if(idx!==-1)entries[idx]=entry;else entries.push(entry);
-  saveEntries(entries);
-  msgEl.innerHTML='<div class="alert success">✅ Збережено!</div>';
+  try{
+    await fbSaveEntry(entry);
+    msgEl.innerHTML='<div class="alert success">✅ Збережено!</div>';
+  }catch(e){
+    msgEl.innerHTML='<div class="alert error">Помилка збереження</div>';
+  }
   setTimeout(()=>msgEl.innerHTML='',3000);
-  renderRecentEntries();
 }
 
 function renderRecentEntries(){
-  const entries=getEntries().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  const entries=getEntries().slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
   const el=document.getElementById('recent-entries');
   if(!entries.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">Записів немає</div>';return;}
   el.innerHTML=entries.map(e=>`
@@ -369,32 +437,26 @@ function renderRecentEntries(){
     </div>`).join('');
 }
 
-function deleteEntry(manager,date){
+async function deleteEntry(manager,date){
   if(!confirm('Видалити?'))return;
-  saveEntries(getEntries().filter(e=>!(e.manager===manager&&e.date===date)));
-  renderRecentEntries();
+  await fbDeleteEntry(manager,date);
 }
 
-function addManager(){
+async function addManager(){
   const name=document.getElementById('new-manager').value.trim();
   const msgEl=document.getElementById('mgr-msg');
   if(!name){msgEl.innerHTML='<div class="alert error">Введіть ім\'я</div>';return;}
   const list=getManagers();
   if(list.includes(name)){msgEl.innerHTML='<div class="alert error">Такий менеджер вже є</div>';return;}
-  list.push(name);
-  saveManagers(list);
+  await fbSaveManagers([...list,name]);
   document.getElementById('new-manager').value='';
-  fillManagerSelects();
-  renderManagersList();
   msgEl.innerHTML='<div class="alert success">✅ Додано!</div>';
   setTimeout(()=>msgEl.innerHTML='',2500);
 }
 
-function deleteManager(name){
+async function deleteManager(name){
   if(!confirm('Видалити менеджера '+name+'? Його записи та плани залишаться в історії.'))return;
-  saveManagers(getManagers().filter(m=>m!==name));
-  fillManagerSelects();
-  renderManagersList();
+  await fbSaveManagers(getManagers().filter(m=>m!==name));
 }
 
 function renderManagersList(){
@@ -408,28 +470,28 @@ function renderManagersList(){
   `).join('');
 }
 
-function savePlan(){
+async function savePlan(){
   const manager=document.getElementById('p-manager').value;
   const month=document.getElementById('p-month').value;
   const msgEl=document.getElementById('p-msg');
   if(!month){msgEl.innerHTML='<div class="alert error">Виберіть місяць</div>';return;}
-  const plans=getPlans();
-  const idx=plans.findIndex(p=>p.manager===manager&&p.month===month);
   const plan={manager,month,
     approve:document.getElementById('p-approve').value,
     upsell:document.getElementById('p-upsell').value,
     profit:document.getElementById('p-profit').value,
     success:document.getElementById('p-success').value
   };
-  if(idx!==-1)plans[idx]=plan;else plans.push(plan);
-  savePlans(plans);
-  msgEl.innerHTML='<div class="alert success">✅ План збережено!</div>';
+  try{
+    await fbSavePlan(plan);
+    msgEl.innerHTML='<div class="alert success">✅ План збережено!</div>';
+  }catch(e){
+    msgEl.innerHTML='<div class="alert error">Помилка збереження</div>';
+  }
   setTimeout(()=>msgEl.innerHTML='',3000);
-  renderPlansList();
 }
 
 function renderPlansList(){
-  const plans=getPlans().sort((a,b)=>b.month.localeCompare(a.month));
+  const plans=getPlans().slice().sort((a,b)=>b.month.localeCompare(a.month));
   const el=document.getElementById('plans-list');
   if(!plans.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">Планів немає</div>';return;}
   el.innerHTML=`<table class="ov-table"><thead><tr><th>Менеджер</th><th>Місяць</th>${KPI.map(k=>`<th>${k.label}</th>`).join('')}<th></th></tr></thead><tbody>
@@ -444,10 +506,9 @@ function renderPlansList(){
   }).join('')}</tbody></table>`;
 }
 
-function deletePlan(manager,month){
+async function deletePlan(manager,month){
   if(!confirm('Видалити план?'))return;
-  savePlans(getPlans().filter(p=>!(p.manager===manager&&p.month===month)));
-  renderPlansList();
+  await fbDeletePlan(manager,month);
 }
 
 function renderHistory(){
@@ -474,6 +535,19 @@ function renderHistory(){
     </div>`).join('');
 }
 
+// ---- EXPOSE FUNCTIONS TO GLOBAL (needed for onclick in module scope) ----
+window.showPage = showPage;
+window.setMgrTab = setMgrTab;
+window.saveEntry = saveEntry;
+window.deleteEntry = deleteEntry;
+window.savePlan = savePlan;
+window.deletePlan = deletePlan;
+window.addManager = addManager;
+window.deleteManager = deleteManager;
+window.renderDashboard = renderDashboard;
+window.renderHistory = renderHistory;
+
+// ---- INIT ----
 initSelects();
 renderDashboard();
 </script>
