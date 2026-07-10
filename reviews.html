@@ -688,6 +688,7 @@ tr.row-normal:hover td { background: var(--surface2); }
       <button class="filter-btn active" onclick="setNFilter('status','all',this)">Всі</button>
       <button class="filter-btn" onclick="setNFilter('status','open',this)">🔴 В роботі</button>
       <button class="filter-btn" onclick="setNFilter('status','resolved',this)">✅ Вирішено</button>
+      <button class="filter-btn" onclick="setNFilter('status','failed',this)">⚫ Не вдалося</button>
     </div>
     <div class="filters">
       <span style="font-size:12px;color:var(--muted);margin-right:4px">Магазин:</span>
@@ -695,6 +696,15 @@ tr.row-normal:hover td { background: var(--surface2); }
       <button class="filter-btn" onclick="setNFilter('shop','black_street',this)">Black Street</button>
       <button class="filter-btn" onclick="setNFilter('shop','bonna_shop',this)">Bonna-shop</button>
       <button class="filter-btn" onclick="setNFilter('shop','core22',this)">Core22</button>
+    </div>
+    <div class="filters">
+      <span style="font-size:12px;color:var(--muted);margin-right:4px">Період:</span>
+      <button class="filter-btn active" onclick="setNPeriod('all',this)">Весь час</button>
+      <button class="filter-btn" onclick="setNPeriod('month',this)">Цей місяць</button>
+      <button class="filter-btn" onclick="setNPeriod('prevmonth',this)">Минулий місяць</button>
+      <button class="filter-btn" onclick="setNPeriod('custom',this)">Вибрати діапазон</button>
+      <input type="date" id="neg-from" onchange="renderNegative()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:6px 10px" />
+      <input type="date" id="neg-to" onchange="renderNegative()" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:6px 10px" />
     </div>
   </div>
 
@@ -747,6 +757,7 @@ tr.row-normal:hover td { background: var(--surface2); }
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="addCallLog()">Зберегти дзвінок</button>
         <button class="btn btn-sm btn-green" onclick="resolveNegative()">✅ Відгук видалено/вирішено</button>
+        <button class="btn btn-sm" style="background:#555;color:#fff" onclick="failNegative()">⚫ Не вдалося вирішити</button>
         <button class="btn btn-sm btn-gray" onclick="closeCallModal()">Закрити</button>
       </div>
     </div>
@@ -1132,7 +1143,36 @@ document.getElementById('edit-modal').addEventListener('click', function(e) {
 });
 
 // ========== NEGATIVE REVIEWS ==========
-const nFilters = { status: 'all', shop: 'all' };
+const nFilters = { status: 'all', shop: 'all', period: 'all', from: '', to: '' };
+
+function setNPeriod(val, el) {
+  el.closest('.filters').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const fromEl = document.getElementById('neg-from');
+  const toEl = document.getElementById('neg-to');
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+  nFilters.period = val;
+
+  if (val === 'custom') {
+    fromEl.style.display = ''; toEl.style.display = '';
+    return;
+  }
+  fromEl.style.display = 'none'; toEl.style.display = 'none';
+
+  if (val === 'all') {
+    nFilters.from = ''; nFilters.to = '';
+  } else if (val === 'month') {
+    nFilters.from = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+    nFilters.to = fmt(new Date(today.getFullYear(), today.getMonth()+1, 0));
+  } else if (val === 'prevmonth') {
+    nFilters.from = fmt(new Date(today.getFullYear(), today.getMonth()-1, 1));
+    nFilters.to = fmt(new Date(today.getFullYear(), today.getMonth(), 0));
+  }
+  renderNegative();
+}
 
 function setNFilter(type, val, el) {
   nFilters[type] = val;
@@ -1177,19 +1217,39 @@ async function deleteNegative(id) {
 }
 
 function renderNegative() {
-  const allData = getNegative();
+  const rawData = getNegative();
 
-  // Top stats (always all data)
+  // Read custom date inputs
+  if (nFilters.period === 'custom') {
+    nFilters.from = document.getElementById('neg-from').value || '';
+    nFilters.to = document.getElementById('neg-to').value || '';
+  }
+
+  // Period filter (by addedAt date)
+  const inPeriod = (o) => {
+    if (!nFilters.from && !nFilters.to) return true;
+    const d = o.addedAt ? new Date(o.addedAt).toISOString().split('T')[0] : '';
+    if (!d) return false;
+    if (nFilters.from && d < nFilters.from) return false;
+    if (nFilters.to && d > nFilters.to) return false;
+    return true;
+  };
+
+  const allData = rawData.filter(inPeriod);
+
+  // Top stats (respect period)
   const total = allData.length;
-  const open = allData.filter(o => !o.resolved).length;
+  const open = allData.filter(o => !o.resolved && o.outcome !== 'failed').length;
   const resolved = allData.filter(o => o.resolved).length;
+  const failed = allData.filter(o => o.outcome === 'failed').length;
   document.getElementById('neg-stats-top').innerHTML = `
     <div class="stat-box"><div class="stat-num red">${total}</div><div class="stat-lbl">Всього негативних</div></div>
     <div class="stat-box"><div class="stat-num yellow">${open}</div><div class="stat-lbl">В роботі</div></div>
     <div class="stat-box"><div class="stat-num green">${resolved}</div><div class="stat-lbl">Вирішено</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#999">${failed}</div><div class="stat-lbl">Не вдалося</div></div>
   `;
 
-  // Manager stats
+  // Manager stats (respect period)
   document.getElementById('neg-manager-stats').innerHTML = MANAGERS.map(m => {
     const mResolved = allData.filter(o => o.resolved && o.resolvedBy === m).length;
     const mCalls = allData.reduce((sum, o) => sum + o.calls.filter(c => c.manager === m).length, 0);
@@ -1204,8 +1264,9 @@ function renderNegative() {
 
   // Filtered data for list
   let data = [...allData];
-  if (nFilters.status === 'open') data = data.filter(o => !o.resolved);
+  if (nFilters.status === 'open') data = data.filter(o => !o.resolved && o.outcome !== 'failed');
   if (nFilters.status === 'resolved') data = data.filter(o => o.resolved);
+  if (nFilters.status === 'failed') data = data.filter(o => o.outcome === 'failed');
   if (nFilters.shop !== 'all') data = data.filter(o => o.shop === nFilters.shop);
   data.sort((a,b) => new Date(b.addedAt) - new Date(a.addedAt));
 
@@ -1213,7 +1274,7 @@ function renderNegative() {
   if (!data.length) { list.innerHTML = '<div class="empty">Немає записів</div>'; return; }
 
   list.innerHTML = data.map(o => {
-    const borderColor = o.resolved ? 'var(--green)' : 'var(--red)';
+    const borderColor = o.resolved ? 'var(--green)' : (o.outcome === 'failed' ? '#777' : 'var(--red)');
     const lastCall = o.calls.length ? o.calls[o.calls.length-1] : null;
 
     const callsHtml = o.calls.map((c,i) => `
@@ -1227,6 +1288,11 @@ function renderNegative() {
       </div>
     `).join('');
 
+    let statusBadge;
+    if (o.resolved) statusBadge = `<span class="badge badge-green" style="margin-left:8px">✅ Вирішено ${o.resolvedBy ? o.resolvedBy + ' · ' : ''}${fmtDateShort(o.resolvedAt)}</span>`;
+    else if (o.outcome === 'failed') statusBadge = `<span class="badge" style="margin-left:8px;background:#444;color:#ccc">⚫ Не вдалося ${o.failedBy ? o.failedBy + ' · ' : ''}${o.failedAt ? fmtDateShort(o.failedAt) : ''}</span>`;
+    else statusBadge = `<span class="badge badge-red" style="margin-left:8px">🔴 В роботі</span>`;
+
     return `
     <div class="card" style="border-left:3px solid ${borderColor};margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
@@ -1234,7 +1300,7 @@ function renderNegative() {
           <span style="font-size:15px;font-weight:700">#${o.orderId}</span>
           <span class="shop-tag" style="margin-left:8px">${SHOPS[o.shop]}</span>
           <span style="margin-left:8px;font-size:12px;color:var(--muted)">Додав: ${o.manager} · ${fmtDateShort(o.addedAt)}</span>
-          ${o.resolved ? `<span class="badge badge-green" style="margin-left:8px">✅ Вирішено ${o.resolvedBy ? o.resolvedBy + ' · ' : ''}${fmtDateShort(o.resolvedAt)}</span>` : `<span class="badge badge-red" style="margin-left:8px">🔴 В роботі</span>`}
+          ${statusBadge}
         </div>
         <div style="display:flex;gap:6px">
           <button class="btn btn-sm" onclick="openCallModal('${o.id}')">📞 Дзвінки (${o.calls.length})</button>
@@ -1256,9 +1322,15 @@ function renderNegative() {
         </div>
       ` : ''}
 
-      ${lastCall && !o.resolved ? `
+      ${lastCall && !o.resolved && o.outcome !== 'failed' ? `
         <div style="margin-top:8px;font-size:12px;color:var(--yellow)">
           ⏰ Останній дзвінок: ${lastCall.manager} · ${fmtDateShort(lastCall.date)} · ${CALL_RESULTS[lastCall.result]}
+        </div>
+      ` : ''}
+
+      ${o.outcome === 'failed' ? `
+        <div style="margin-top:10px">
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--muted)" onclick="reopenNegative('${o.id}')">↩ Повернути в роботу</button>
         </div>
       ` : ''}
     </div>`;
@@ -1322,9 +1394,43 @@ async function resolveNegative() {
     calls,
     resolved: true,
     resolvedAt: new Date().toISOString(),
-    resolvedBy: manager
+    resolvedBy: manager,
+    outcome: 'resolved'
   });
   closeCallModal();
+}
+
+async function failNegative() {
+  const id = document.getElementById('call-neg-id').value;
+  const manager = document.getElementById('call-manager').value;
+  const result = document.getElementById('call-result').value;
+  const comment = document.getElementById('call-comment').value.trim();
+
+  const neg = _negative.find(o => o.id === id);
+  if (!neg) return;
+
+  if (!confirm('Позначити як "Не вдалося вирішити"? Замовлення більше не буде висіти в роботі.')) return;
+
+  const calls = [...(neg.calls || []), { manager, result, comment, date: new Date().toISOString() }];
+  await updateDoc(doc(db, 'reviews_negative', neg._fid), {
+    calls,
+    resolved: false,
+    outcome: 'failed',
+    failedAt: new Date().toISOString(),
+    failedBy: manager
+  });
+  closeCallModal();
+}
+
+async function reopenNegative(id) {
+  const neg = _negative.find(o => o.id === id);
+  if (!neg) return;
+  await updateDoc(doc(db, 'reviews_negative', neg._fid), {
+    resolved: false,
+    outcome: 'open',
+    failedAt: null,
+    failedBy: null
+  });
 }
 
 document.getElementById('call-modal').addEventListener('click', function(e) {
@@ -1357,8 +1463,11 @@ window.openCallModal = openCallModal;
 window.closeCallModal = closeCallModal;
 window.addCallLog = addCallLog;
 window.resolveNegative = resolveNegative;
+window.failNegative = failNegative;
+window.reopenNegative = reopenNegative;
 window.setFilter = setFilter;
 window.setNFilter = setNFilter;
+window.setNPeriod = setNPeriod;
 window.showPage = showPage;
 window.resetStatsFilters = resetStatsFilters;
 window.renderStats = renderStats;
