@@ -881,13 +881,14 @@ window.renderManagers = function renderManagers() {
         <div style="font-size:11px;color:var(--muted);margin-top:4px;">від забраних посилок</div>
       </div>
       <div class="stat-card" style="border-color:#0a3a1a;">
-        <div class="label">🏦 Мій чистий</div>
         ${netUnlocked ? `
+          <div class="label">🏦 Мій чистий</div>
           <div class="value green">${Math.round(myNet).toLocaleString()} грн</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px;">із ${soldAmount.toLocaleString()} грн забраних · <span style="cursor:pointer;color:var(--muted);text-decoration:underline" onclick="lockNet()">сховати</span></div>
         ` : `
+          <div class="label" style="cursor:pointer" onclick="unlockNet()">🔒</div>
           <div class="value green" style="letter-spacing:3px;cursor:pointer" onclick="unlockNet()">••••••</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px;cursor:pointer" onclick="unlockNet()">🔒 Натисніть щоб показати</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;cursor:pointer" onclick="unlockNet()">Натисніть щоб показати</div>
         `}
       </div>`;
     })()}`;
@@ -950,13 +951,13 @@ window.renderManagers = function renderManagers() {
           <div style="font-size:11px;color:var(--muted);margin-top:3px;">${getManagerPct(name)}% від забраних</div>
         </div>
         <div style="background:var(--bg);border:1px solid #0a3a1a;border-radius:10px;padding:14px;text-align:center;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🏦 Мій чистий</div>
           ${netUnlocked ? `
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🏦 Мій чистий</div>
             <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--accent2);">${Math.round(s.soldAmount * (100 - getManagerPct(name)) / 100).toLocaleString()} грн</div>
             <div style="font-size:11px;color:var(--muted);margin-top:3px;">із ${s.soldAmount.toLocaleString()} грн</div>
           ` : `
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;cursor:pointer;" onclick="unlockNet()">🔒</div>
             <div style="font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;color:var(--accent2);letter-spacing:2px;cursor:pointer;" onclick="unlockNet()">•••</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px;cursor:pointer;" onclick="unlockNet()">🔒</div>
           `}
         </div>
       </div>
