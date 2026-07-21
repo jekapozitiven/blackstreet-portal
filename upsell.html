@@ -478,11 +478,11 @@ window.renderOrders = function renderOrders(resetPage) {
       <td><strong>${o.manager}</strong></td>
       <td style="color:var(--muted);font-size:12px;">${o.date}</td>
       <td style="font-family:monospace;font-size:12px;">${o.phone || '—'}</td>
-      <td>
+      <td id="ttn-cell-${o.fireId}">
         ${o.ttn
-          ? `<span style="font-family:monospace;font-size:12px;">${o.ttn}</span>
+          ? `<span style="font-family:monospace;font-size:12px;cursor:pointer;border-bottom:1px dashed #444;" onclick="editTTN('${o.fireId}')" title="Клікніть щоб змінити">${o.ttn}</span>
              <button class="btn btn-track btn-sm" style="margin-left:6px;" onclick="trackTTN('${o.fireId}')">🔄</button>`
-          : '<span style="color:var(--muted)">—</span>'
+          : `<span style="color:var(--accent2);cursor:pointer;border:1px dashed #2a5a3a;border-radius:6px;padding:4px 10px;font-size:12px;" onclick="editTTN('${o.fireId}')" title="Клікніть щоб додати ТТН">+ Додати ТТН</span>`
         }
       </td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.product || '—'}</td>
@@ -589,6 +589,36 @@ window.saveEdit = async function(fireId) {
 }
 
 // ---- TRACK TTN ----
+// ---- INLINE TTN EDIT ----
+window.editTTN = function(fireId) {
+  const cell = document.getElementById('ttn-cell-' + fireId);
+  if(!cell) return;
+  const o = orders.find(x => x.fireId === fireId);
+  const current = o?.ttn || '';
+  cell.innerHTML = `
+    <div style="display:flex;gap:4px;align-items:center;">
+      <input type="text" id="ttn-input-${fireId}" value="${current}" placeholder="Введіть ТТН"
+        style="width:150px;font-family:monospace;font-size:12px;background:var(--surface2);border:1px solid var(--accent);border-radius:6px;color:var(--text);padding:5px 8px;outline:none;"
+        onkeydown="if(event.key==='Enter'){saveTTNInline('${fireId}')}else if(event.key==='Escape'){renderOrders()}" />
+      <button class="btn btn-track btn-sm" style="padding:5px 8px;" onclick="saveTTNInline('${fireId}')">✓</button>
+      <button class="btn btn-sm" style="padding:5px 8px;background:var(--surface2);color:var(--muted);" onclick="renderOrders()">✕</button>
+    </div>`;
+  const inp = document.getElementById('ttn-input-' + fireId);
+  if(inp) { inp.focus(); inp.select(); }
+};
+
+window.saveTTNInline = async function(fireId) {
+  const inp = document.getElementById('ttn-input-' + fireId);
+  if(!inp) return;
+  const ttn = inp.value.trim().replace(/\s+/g, '');
+  try {
+    await updateDoc(doc(db, 'orders', fireId), { ttn });
+    toast(ttn ? '✅ ТТН збережено' : '✅ ТТН очищено');
+  } catch(e) {
+    toast('⚠️ Помилка збереження');
+  }
+};
+
 window.trackTTN = async function(fireId) {
   const o = orders.find(x => x.fireId === fireId);
   if(!o || !o.ttn) return;
