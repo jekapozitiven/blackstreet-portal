@@ -110,6 +110,7 @@
   <div class="tab active" onclick="switchTab('add')">➕ Додати</div>
   <div class="tab" onclick="switchTab('orders')">📦 Замовлення</div>
   <div class="tab" onclick="switchTab('managers')">🏆 Менеджери</div>
+  <div class="tab" onclick="switchTab('deleted')">🗑 Видалені</div>
 </div>
 
 <div class="main">
@@ -238,6 +239,26 @@
     <div class="section-title">Рейтинг менеджерів</div>
     <div id="managers-list"></div>
   </div>
+
+  <!-- DELETED TAB -->
+  <div class="page" id="tab-deleted">
+    <div class="filter-row">
+      <input type="text" id="del-search" oninput="renderDeleted()" placeholder="🔍 Пошук: № заказу або телефон" style="min-width:240px" />
+    </div>
+    <div style="font-size:12px;color:var(--muted);padding:0 0 12px;">Заказы, чьи допродажі автоматично видалені, бо заказ у CRM видалено або переведено в «Не учитываем»/«Дублі».</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Дата видалення</th><th>№ заказу MyDrop</th><th>Телефон</th>
+            <th>ТТН</th><th>Сума</th><th>Причина</th>
+          </tr>
+        </thead>
+        <tbody id="deleted-tbody"></tbody>
+      </table>
+    </div>
+    <div id="deleted-empty" class="empty" style="display:none;">Поки що нічого не видалено</div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -335,6 +356,36 @@ onSnapshot(doc(db, 'kpi_config', 'salary_pct'), snap => {
   }
 }, () => {});
 
+// Deleted (auto-removed) upsells listener — журнал видалень з пайплайна
+let deletedUpsells = [];
+onSnapshot(collection(db, 'deleted_upsells'), snap => {
+  deletedUpsells = snap.docs.map(d => ({ fireId: d.id, ...d.data() }));
+  deletedUpsells.sort((a,b) => String(b.deletedAt||'').localeCompare(String(a.deletedAt||'')));
+  renderDeleted();
+}, () => {});
+
+window.renderDeleted = function() {
+  const tb = document.getElementById('deleted-tbody');
+  const empty = document.getElementById('deleted-empty');
+  if(!tb) return;
+  const q = (document.getElementById('del-search')?.value || '').trim().toLowerCase();
+  const rows = deletedUpsells.filter(o => {
+    if(!q) return true;
+    return String(o.mydropOrderId||'').toLowerCase().includes(q) || String(o.phone||'').toLowerCase().includes(q);
+  });
+  if(!rows.length){ tb.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  const fmtDate = s => { if(!s) return '—'; const d=new Date(s); return isNaN(d)? String(s).slice(0,16).replace('T',' ') : d.toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
+  tb.innerHTML = rows.map(o => `<tr>
+    <td>${fmtDate(o.deletedAt)}</td>
+    <td><b>${o.mydropOrderId||'—'}</b></td>
+    <td>${o.phone||'—'}</td>
+    <td>${o.ttn||'—'}</td>
+    <td>${o.amount!=null?o.amount+' грн':'—'}</td>
+    <td>${o.reason||'—'}</td>
+  </tr>`).join('');
+}
+
 // ---- TOAST ----
 window.toast = function(msg) {
   const t = document.getElementById('toast');
@@ -347,10 +398,11 @@ window.toast = function(msg) {
 window.switchTab = function(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const tabs = ['add','orders','managers'];
+  const tabs = ['add','orders','managers','deleted'];
   document.querySelectorAll('.tab')[tabs.indexOf(id)].classList.add('active');
   document.getElementById('tab-'+id).classList.add('active');
   if(id==='managers') renderManagers();
+  if(id==='deleted') renderDeleted();
 }
 
 // ---- MANAGERS ----
