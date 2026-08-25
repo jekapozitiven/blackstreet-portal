@@ -1653,15 +1653,21 @@ function repMonthRawBudget(key, year, month){
 function repMonthDayCount(key, year, month){
   let n=0; repRows.forEach(r=>{ if((r.name+"|"+r.ch)===key && r.date.getFullYear()===year && r.date.getMonth()+1===month && ((r.budget||0)>0||(r.leads||0)>0||(r.approved||0)>0)) n++; }); return n;
 }
+// сума заявок по днях цього магазину за місяць — база для розподілу факт-бюджету
+function repMonthLeads(key, year, month){
+  let s=0; repRows.forEach(r=>{ if((r.name+"|"+r.ch)===key && r.date.getFullYear()===year && r.date.getMonth()+1===month) s+=(r.leads||0); }); return s;
+}
 function repEffDayBudget(r){
   const key=r.name+"|"+r.ch;
   if(!repIsProm(key)) return r.budget||0;
   const y=r.date.getFullYear(), m=r.date.getMonth()+1;
   const actual=repGetBudgetMonthly(key,y,m);
-  if(!(actual>0)) return r.budget||0;
-  const raw=repMonthRawBudget(key,y,m);
-  if(raw>0) return (r.budget||0)*(actual/raw);
-  const n=repMonthDayCount(key,y,m);   // немає денних оцінок → рівний розподіл по днях з даними
+  if(!(actual>0)) return r.budget||0;                 // факт не заданий → звичайний денний бюджет
+  // Факт-бюджет за місяць розноситься по днях ПРОПОРЦІЙНО заявкам (де були замовлення).
+  // День без заявок → 0. Дневные бюджеты при заданому факті ігноруються.
+  const totLeads=repMonthLeads(key,y,m);
+  if(totLeads>0) return actual*((r.leads||0)/totLeads);
+  const n=repMonthDayCount(key,y,m);                  // зовсім немає заявок → рівний розподіл по днях з даними
   return n>0 ? actual/n : 0;
 }
 // розрахунок повного набору метрик для масиву рядків одного магазину (сума за період)
@@ -1921,7 +1927,7 @@ function repRenderAll(){
           <input type="number" value="${s.kcMode==='fix'?s.kcFix:s.kcPct}" min="0" onfocus="this.select()"
           onblur="${s.kcMode==='fix'?`repSetKcFix('${s.key}',${refM.year},${refM.month},this.value)`:`repSetKc('${s.key}',${refM.year},${refM.month},this.value)`}"
           onkeydown="if(event.key==='Enter'){this.blur();}">${s.kcMode==='fix'?'₴/апрув':'%'}</div>
-        ${s.ch==='Prom'?`<div class="buyout-wrap" title="Фактичний бюджет за ${String(refM.month).padStart(2,'0')}.${refM.year}. Впиши підсумок за місяць — рознесеться по днях пропорційно денним оцінкам. Порожнє = рахувати як суму денних.">Факт бюджет міс.
+        ${s.ch==='Prom'?`<div class="buyout-wrap" title="Фактичний бюджет за ${String(refM.month).padStart(2,'0')}.${refM.year}. Впиши підсумок за місяць — рознесеться по всіх днях пропорційно заявкам (де були замовлення). Порожнє = рахувати як суму денних.">Факт бюджет міс.
           <input type="number" min="0" placeholder="авто" value="${repGetBudgetMonthly(s.key,refM.year,refM.month) ?? ''}" style="width:88px;margin-left:5px" onfocus="this.select()"
           onblur="repSetBudgetMonthly('${s.key}',${refM.year},${refM.month},this.value)" onkeydown="if(event.key==='Enter')this.blur()"> ₴</div>`:''}
         <div style="margin-left:auto;text-align:right">
@@ -3041,6 +3047,7 @@ finSyncCustomCatsFromCloud();
     if (val && Array.isArray(val) && val.length && !repFbLoaded) {
       repFbLoaded = true;
       repSources = val;
+      repEnsureRequiredSources();   // догружаємо обов'язкові джерела (Prom-Street Code, Промокод), навіть якщо їх нема в хмарному конфізі
       if(document.getElementById("app-reports") && document.getElementById("app-reports").style.display !== "none"){
         repRenderSettingsTable();
         repReload();
