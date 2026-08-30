@@ -379,7 +379,16 @@ input[type=number]{-moz-appearance:textfield;}
       <div style="font-size:11px;color:#999;font-weight:600;margin-bottom:8px">Групи:</div>
       <div class="sf" style="margin-bottom:10px" id="rep-group-pills"></div>
       <div style="font-size:11px;color:#999;font-weight:600;margin-bottom:8px">Магазини:</div>
-      <div class="sf" id="rep-src-pills"></div>
+      <div style="position:relative;display:inline-block">
+        <button class="rep-chip" id="rep-shops-btn" onclick="repToggleShopsDropdown()" style="display:inline-flex;align-items:center;gap:6px">🏬 <span id="rep-shops-count">—</span> ▾</button>
+        <div id="rep-src-dropdown" style="display:none;position:absolute;z-index:60;top:100%;left:0;margin-top:6px;background:var(--surface);border:1px solid var(--border-2);border-radius:10px;padding:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);min-width:300px;max-width:min(90vw,640px);max-height:360px;overflow:auto">
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="rep-chip" onclick="repShopsAll(true)">✓ Усі</button>
+            <button class="rep-chip" onclick="repShopsAll(false)">✕ Зняти всі</button>
+          </div>
+          <div class="sf" id="rep-src-pills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+      </div>
     </div>
 
     <!-- PANE: МАГАЗИНИ -->
@@ -1578,13 +1587,38 @@ function repToggleSrc(key){
   repSelKeys.has(key) ? repSelKeys.delete(key) : repSelKeys.add(key);
   repRenderAll();
 }
+let repShopsDropdownOpen = false;
+function repToggleShopsDropdown(){
+  repShopsDropdownOpen = !repShopsDropdownOpen;
+  const dd = document.getElementById("rep-src-dropdown");
+  if(dd) dd.style.display = repShopsDropdownOpen ? "block" : "none";
+}
+function repShopsAll(on){
+  const keys = [...new Set(repSources.map(s=>s.name+"|"+s.ch))];
+  if(repRows.some(r=>r.name===NOSRC_NAME)) keys.push(NOSRC_KEY);
+  repSelKeys = new Set(on ? keys : []);
+  repRenderAll();
+}
+// закриваємо випадаючий список по кліку поза ним
+document.addEventListener("click", function(e){
+  if(!repShopsDropdownOpen) return;
+  const dd = document.getElementById("rep-src-dropdown");
+  const btn = document.getElementById("rep-shops-btn");
+  if(dd && btn && !dd.contains(e.target) && !btn.contains(e.target)){
+    repShopsDropdownOpen = false; dd.style.display = "none";
+  }
+});
 function repRenderSrcPills(){
   const keys = [...new Set(repSources.map(s=>s.name+"|"+s.ch))];
   if(repRows.some(r=>r.name===NOSRC_NAME)) keys.push(NOSRC_KEY); // кошик "без джерела" теж можна вимкнути/увімкнути
-  document.getElementById("rep-src-pills").innerHTML = keys.map(k=>{
+  const pillsEl = document.getElementById("rep-src-pills");
+  if(pillsEl) pillsEl.innerHTML = keys.map(k=>{
     const [name,ch] = k.split("|");
     return `<button class="rep-chip${repSelKeys.has(k)?" on":""}" onclick="repToggleSrc('${k}')">${name} · ${ch}</button>`;
   }).join("");
+  const cnt = keys.filter(k=>repSelKeys.has(k)).length;
+  const cel = document.getElementById("rep-shops-count");
+  if(cel) cel.textContent = "магазини: " + cnt + " з " + keys.length;
 }
 
 function repFilteredRows(){
