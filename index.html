@@ -1876,6 +1876,32 @@ function repSwitchTab(tab){
   if(tab==="stats") renderUpsellStats();
 }
 
+// ── компактні мікро-графіки для карток статистики (стовпчики по днях + частка магазинів) ──
+const REP_SHOP_COLORS = ["#1F6FEB","#0E7C5A","#CA8A04","#7C3AED","#DB2777","#0EA5E9","#F97316","#14B8A6","#EF4444","#8B5CF6","#B0793B","#64748B"];
+// series: масив {v:число, lbl:'дата'} ; color — колір стовпчиків; pct — форматувати підказку як %
+function repSparkHtml(series, color, pct){
+  const vals = series.map(s=>s.v);
+  if(!vals.length || vals.every(v=>!v)) return "";
+  const max = Math.max(1, ...vals.map(v=>Math.abs(v)));
+  const bars = series.map(s=>{
+    const h = Math.max(Math.abs(s.v)/max*100, 3);
+    const neg = s.v<0;
+    const tip = s.lbl+": "+(pct?fP(s.v/100):fmt(s.v));
+    return `<div title="${tip}" style="flex:1 1 0;min-width:1px;border-radius:2px 2px 0 0;height:${h}%;background:${neg?'#C2453B':color};opacity:.85"></div>`;
+  }).join("");
+  return `<div style="display:flex;align-items:flex-end;gap:1px;height:24px;margin-top:10px">${bars}</div>`;
+}
+// parts: [{name,color,val}] — частка кожного магазину в показнику (тонка стрічка + легенда топ-5)
+function repShareHtml(parts){
+  const pos = parts.filter(p=>p.val>0);
+  const tot = pos.reduce((a,p)=>a+p.val,0);
+  if(tot<=0) return "";
+  const sorted = [...pos].sort((a,b)=>b.val-a.val);
+  const segs = sorted.map(p=>`<span title="${p.name}: ${fmt(p.val)}" style="height:100%;width:${p.val/tot*100}%;background:${p.color}"></span>`).join("");
+  const leg = sorted.slice(0,5).map(p=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--text-muted)"><i style="width:7px;height:7px;border-radius:2px;background:${p.color};display:inline-block"></i>${p.name} ${Math.round(p.val/tot*100)}%</span>`).join("");
+  return `<div style="display:flex;height:6px;border-radius:4px;overflow:hidden;margin-top:9px">${segs}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:5px">${leg}</div>`;
+}
 function repRenderAll(){
   repRenderGroupPills();
   repRenderSrcPills();
@@ -1927,21 +1953,47 @@ function repRenderAll(){
   // скільки із заявок — без джерела (тепер вони ВХОДЯТЬ у тотал; показуємо довідково "з них")
   const noSrcT = rows.reduce((a,r)=> a + (r.name===NOSRC_NAME ? (r.leads||0) : 0), 0);
 
+  // ── мікро-графіки по днях + частка магазинів (компактно під картками) ──
+  shopList.forEach((s,i)=>{ s._c = REP_SHOP_COLORS[i % REP_SHOP_COLORS.length]; });
+  const dayAgg = repCalcAllSourcesDayRows(rows);
+  const _dl = d => String(d.getDate()).padStart(2,'0')+"."+String(d.getMonth()+1).padStart(2,'0');
+  // допродажі по днях (для % ЗП та карток допродаж)
+  const upByDay = {};
+  upsellFilteredOrders().forEach(o=>{
+    const d = upsellParseDate(o.date); if(!d) return;
+    const k = repIsoDate(d);
+    if(!upByDay[k]) upByDay[k] = {count:0, inWork:0, salary:0};
+    const amt = parseFloat(o.amount)||0;
+    upByDay[k].count++;
+    if(o.status==="received") upByDay[k].salary += amt*upsellPct(o.manager)/100;
+    else if(o.status!=="refused") upByDay[k].inWork += amt;
+  });
+  const sLeads  = dayAgg.map(d=>({v:d.leads, lbl:_dl(d.date)}));
+  const sNet    = dayAgg.map(d=>({v:d.net, lbl:_dl(d.date)}));
+  const sMarg   = dayAgg.map(d=>({v:d.approved?d.realMargin/d.approved:0, lbl:_dl(d.date)}));
+  const sPctBud = dayAgg.map(d=>({v:d.realMargin?d.budget/d.realMargin*100:0, lbl:_dl(d.date)}));
+  const sPctSal = dayAgg.map(d=>{ const k=repIsoDate(d.date); const sal=upByDay[k]?upByDay[k].salary:0; return {v:d.net?(d.kc+sal)/d.net*100:0, lbl:_dl(d.date)}; });
+  const miniLeads  = repSparkHtml(sLeads,'#1F6FEB') + repShareHtml(shopList.map(s=>({name:s.name,color:s._c,val:s.leads})));
+  const miniNet    = repSparkHtml(sNet,'#0E7C5A')   + repShareHtml(shopList.map(s=>({name:s.name,color:s._c,val:Math.max(0,s.net)})));
+  const miniMarg   = repSparkHtml(sMarg,'#0E7C5A')  + repShareHtml(shopList.map(s=>({name:s.name,color:s._c,val:s.realMargin})));
+  const miniPctBud = repSparkHtml(sPctBud,'#7C3AED',true) + repShareHtml(shopList.map(s=>({name:s.name,color:s._c,val:s.budget})));
+  const miniPctSal = repSparkHtml(sPctSal,'#F97316',true) + repShareHtml(shopList.map(s=>({name:s.name,color:s._c,val:s.kc})));
+
   document.getElementById("rep-kpis").innerHTML = `
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_budget">Бюджет</span></div><div class="kpi-val">${fmt(T.budget)} ₴</div><div class="kpi-sub">${uniqueDays} днів даних</div></div>
-    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_leads">Заявки</span></div><div class="kpi-val">${fmt(T.leads)}</div><div class="kpi-sub">нові: ${fmt(T.novi)} · в роботі: ${fmt(T.inWork)} · не апрув: ${fmt(T.notApproved)}${T.duplicates?` · дублі: ${fmt(T.duplicates)}`:''}${noSrcT?`<br><span style="color:var(--text-faint)" title="Замовлення без джерела трафіку (статус Нові). Входять у тотал заявок; коли в CRM проставиш джерело — перейдуть у відповідний магазин.">з них без джерела: ${fmt(noSrcT)}</span>`:''}</div></div>
+    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_leads">Заявки</span></div><div class="kpi-val">${fmt(T.leads)}</div><div class="kpi-sub">нові: ${fmt(T.novi)} · в роботі: ${fmt(T.inWork)} · не апрув: ${fmt(T.notApproved)}${T.duplicates?` · дублі: ${fmt(T.duplicates)}`:''}${noSrcT?`<br><span style="color:var(--text-faint)" title="Замовлення без джерела трафіку (статус Нові). Входять у тотал заявок; коли в CRM проставиш джерело — перейдуть у відповідний магазин.">з них без джерела: ${fmt(noSrcT)}</span>`:''}</div>${miniLeads}</div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_approved">Апрув</span></div><div class="kpi-val">${fmt(T.approved)}</div><div class="kpi-sub"><span class="tip-label" data-tip="rep_apprate">% Апрув: ${fP(approvalRate/100)}</span></div></div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="cpl">Ціна заявки</span></div><div class="kpi-val">${fmt(cplT)} ₴</div></div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="cpa">Ціна апрув</span></div><div class="kpi-val">${fmt(cpaT)} ₴</div></div>
     <div class="kpi"><div class="kpi-lbl">Оборот (апрув)</div><div class="kpi-val">${fmt(T.revenue)} ₴</div><div class="kpi-sub">сума замовлень апрувнутих · серед. чек ${fmt(T.approved?T.revenue/T.approved:0)} ₴</div></div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_margin">Маржа (з CRM)</span></div><div class="kpi-val">${fmt(T.realMargin)} ₴</div><div class="kpi-sub">забрали ${fmt(T.picked)} · викуп ${fP(buyoutActualT/100)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Середня ціна заказу</div><div class="kpi-val">${fmt(T.approved?T.revenue/T.approved:0)} ₴</div><div class="kpi-sub">оборот ÷ апрув (${fmt(T.approved)})</div></div>
-    <div class="kpi"><div class="kpi-lbl">Середня маржа з заказу</div><div class="kpi-val">${fmt(T.approved?T.realMargin/T.approved:0)} ₴</div><div class="kpi-sub">маржа ÷ апрув (${fmt(T.approved)})</div></div>
-    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="net">Чистий прибуток</span></div><div class="kpi-val" style="color:${nc(T.net)}">${fmt(T.net)} ₴</div><div class="kpi-sub"><span class="tip-label" data-tip="roas">ROAS</span> <b style="color:${rc(roas)}">${fX(roas)}</b> · <span class="tip-label" data-tip="roi">ROI</span> <b style="color:${roic(roi)}">${fP(roi)}</b></div></div>
+    <div class="kpi"><div class="kpi-lbl">Середня маржа з заказу</div><div class="kpi-val">${fmt(T.approved?T.realMargin/T.approved:0)} ₴</div><div class="kpi-sub">маржа ÷ апрув (${fmt(T.approved)})</div>${miniMarg}</div>
+    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="net">Чистий прибуток</span></div><div class="kpi-val" style="color:${nc(T.net)}">${fmt(T.net)} ₴</div><div class="kpi-sub"><span class="tip-label" data-tip="roas">ROAS</span> <b style="color:${rc(roas)}">${fX(roas)}</b> · <span class="tip-label" data-tip="roi">ROI</span> <b style="color:${roic(roi)}">${fP(roi)}</b></div>${miniNet}</div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_kcspent">Витрачено на КЦ</span></div><div class="kpi-val">${fmt(T.kc)} ₴</div><div class="kpi-sub">+ ЗП за допродажі: <b style="color:#F97316">${fmt(upsellSalaryT)} ₴</b><br>потенційна (з тими, що в роботі): <b style="color:#CA8A04">${fmt(upsellSalaryPotT)} ₴</b></div></div>
     <div class="kpi"><div class="kpi-lbl">Сума повернень</div><div class="kpi-val" style="color:#C2453B">${fmt(T.returnCost)} ₴</div><div class="kpi-sub">введено вручну по магазинах</div></div>
-    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_pctbudget">% бюджету від маржі</span></div><div class="kpi-val">${fP(pctBudgetOfMargin/100)}</div></div>
-    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_pctsalary">% ЗП від прибутку</span></div><div class="kpi-val">${fP(pctSalaryOfProfit/100)}</div></div>
+    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_pctbudget">% бюджету від маржі</span></div><div class="kpi-val">${fP(pctBudgetOfMargin/100)}</div>${miniPctBud}</div>
+    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_pctsalary">% ЗП від прибутку</span></div><div class="kpi-val">${fP(pctSalaryOfProfit/100)}</div>${miniPctSal}</div>
   `;
   document.getElementById("rep-total-toggle-btn").textContent = repTotalExpanded ? "▴ Згорнути" : "📅 Деталі по днях (усі джерела)";
   document.getElementById("rep-total-days").innerHTML = repTotalExpanded ? repRenderTotalDaysTable(rows) : "";
@@ -2217,11 +2269,24 @@ function renderUpsellStats(){
   // чи встиг repRenderAll оновити спільну змінну — тому цифра з'являється одразу
   const approvedNow = repFilteredRows().reduce((a,r)=>a+(r.approved||0),0);
   const pctOfApproved = approvedNow ? totalCount/approvedNow : 0;
+  // допродажі по днях — стовпчики під картками «Всього» і «В роботі»
+  const upDayMap = {};
+  filtered.forEach(o=>{
+    const d = upsellParseDate(o.date); if(!d) return;
+    const k = repIsoDate(d);
+    if(!upDayMap[k]) upDayMap[k] = {count:0, inWork:0};
+    upDayMap[k].count++;
+    if(o.status!=="received" && o.status!=="refused") upDayMap[k].inWork += (parseFloat(o.amount)||0);
+  });
+  const _upKeys = Object.keys(upDayMap).sort();
+  const _dlu = k => k.slice(8,10)+"."+k.slice(5,7);
+  const miniUpCount  = repSparkHtml(_upKeys.map(k=>({v:upDayMap[k].count, lbl:_dlu(k)})), '#0EA5E9');
+  const miniUpInWork = repSparkHtml(_upKeys.map(k=>({v:upDayMap[k].inWork, lbl:_dlu(k)})), '#CA8A04');
 
   kpisEl.innerHTML = `
-    <div class="kpi"><div class="kpi-lbl">Всього допродажів</div><div class="kpi-val">${fmt(totalCount)}</div><div class="kpi-sub">${fmt(totalAmount)} ₴ на суму · <b style="color:#0E7C5A">${fP(pctOfApproved)}</b> від апрув (${fmt(approvedNow)})</div></div>
+    <div class="kpi"><div class="kpi-lbl">Всього допродажів</div><div class="kpi-val">${fmt(totalCount)}</div><div class="kpi-sub">${fmt(totalAmount)} ₴ на суму · <b style="color:#0E7C5A">${fP(pctOfApproved)}</b> від апрув (${fmt(approvedNow)})</div>${miniUpCount}</div>
     <div class="kpi"><div class="kpi-lbl">Отримано (успішно)</div><div class="kpi-val" style="color:#0E7C5A">${fmt(received.amount)} ₴</div><div class="kpi-sub">${fmt(received.count)} шт.</div></div>
-    <div class="kpi"><div class="kpi-lbl">В роботі</div><div class="kpi-val" style="color:#CA8A04">${fmt(inWork.amount)} ₴</div><div class="kpi-sub">${fmt(inWork.count)} шт. (нове/в дорозі)</div></div>
+    <div class="kpi"><div class="kpi-lbl">В роботі</div><div class="kpi-val" style="color:#CA8A04">${fmt(inWork.amount)} ₴</div><div class="kpi-sub">${fmt(inWork.count)} шт. (нове/в дорозі)</div>${miniUpInWork}</div>
     <div class="kpi"><div class="kpi-lbl">Відмови</div><div class="kpi-val" style="color:#C2453B">${fmt(refused.amount)} ₴</div><div class="kpi-sub">${fmt(refused.count)} шт.</div></div>
     <div class="kpi"><div class="kpi-lbl">% успішних</div><div class="kpi-val">${fP(convRate)}</div><div class="kpi-sub">отримано / (отримано+відмова)</div></div>
   `;
