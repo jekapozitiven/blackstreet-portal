@@ -199,7 +199,7 @@
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Менеджер</th><th>Дата</th><th>Телефон</th>
+            <th>#</th><th>Менеджер</th><th onclick="toggleDateSort()" style="cursor:pointer;user-select:none" title="Сортувати за датою">Дата <span id="date-sort-arrow">↓</span></th><th>Телефон</th>
             <th>ТТН</th><th>Товар</th><th>Тип</th><th>Сума</th><th>Статус</th><th></th>
           </tr>
         </thead>
@@ -475,6 +475,19 @@ window.addOrder = async function() {
 // ---- RENDER ORDERS ----
 let currentPage = 1;
 
+// ── сортування замовлень за датою (клік по заголовку «Дата») ──
+let ordSortDir = 'desc';   // desc = від новіших до старіших; asc = навпаки
+function _ordTime(o){
+  if(o.timestamp && o.timestamp.seconds) return o.timestamp.seconds*1000;
+  if(o.date){ const p=String(o.date).split('.'); if(p.length===3) return new Date(p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0')).getTime()||0; }
+  return 0;
+}
+window.toggleDateSort = function(){
+  ordSortDir = (ordSortDir === 'desc') ? 'asc' : 'desc';
+  const ar = document.getElementById('date-sort-arrow');
+  if(ar) ar.textContent = ordSortDir === 'desc' ? '↓' : '↑';
+  renderOrders(true);
+};
 window.renderOrders = function renderOrders(resetPage) {
   if(resetPage) currentPage = 1;
   const fm = document.getElementById('filter-manager').value;
@@ -505,6 +518,9 @@ window.renderOrders = function renderOrders(resetPage) {
       return true;
     });
   }
+
+  // сортування за датою згідно з обраним напрямком (не мутуючи глобальний масив orders)
+  filtered = [...filtered].sort((a,b)=> ordSortDir==='asc' ? _ordTime(a)-_ordTime(b) : _ordTime(b)-_ordTime(a));
 
   const statusLabels = { new:'Нове', transit:'В дорозі', received:'Отримано', refused:'Відмова' };
   const statusClass = { new:'badge-new', transit:'badge-transit', received:'badge-received', refused:'badge-refused' };
