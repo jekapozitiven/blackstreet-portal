@@ -1446,6 +1446,8 @@ async function repReload(){
         const c = days[day] || {};
         const leadsN = Number(c.leads)||0, apN = Number(c.approved)||0;
         let iwN = Number(c.inWork)||0, naN = Number(c.notApproved)||0, nvN = Number(c.novi)||0;
+        // «Апрув для КЦ» (строго по 10 статусах). Легасі-комірки без поля kcAppr → падаємо на approved.
+        const kcApprN = ('kcAppr' in c) ? (Number(c.kcAppr)||0) : apN;
         const missingFields = !('inWork' in c) || !('notApproved' in c);
         if(missingFields){
           // лікуємо легасі-комірки на льоту: для завершених днів inWork=0, тож не апрув = заявки − апрув
@@ -1469,6 +1471,7 @@ async function repReload(){
           refused: Number(c.refused) || 0,
           inWork: iwN,
           novi: nvN,
+          kcAppr: kcApprN,
           notApproved: naN,
           loss: Number(c.loss) || 0,
           duplicates: Number(c.duplicates) || 0,
@@ -1488,11 +1491,12 @@ async function repReload(){
       const c = nd[day]||{};
       const leadsN=Number(c.leads)||0, apN=Number(c.approved)||0;
       let iwN=Number(c.inWork)||0, naN=Number(c.notApproved)||0, nvN=Number(c.novi)||0;
+      const kcApprN = ('kcAppr' in c) ? (Number(c.kcAppr)||0) : apN;
       if(!('inWork' in c)||!('notApproved' in c)) naN=Math.max(0,leadsN-apN-iwN);
       if(!('novi' in c)) nvN=Math.max(0,leadsN-apN-iwN-naN);
       rows.push({date:new Date(+m[1],+m[2]-1,+m[3]), name:NOSRC_NAME, ch:NOSRC_CH, budget:0,
         leads:leadsN, approved:apN, marginPotential:Number(c.margin)||0, notCounted:Number(c.notCounted)||0,
-        sales:Number(c.sales)||0, refused:Number(c.refused)||0, inWork:iwN, novi:nvN, notApproved:naN,
+        sales:Number(c.sales)||0, refused:Number(c.refused)||0, inWork:iwN, novi:nvN, kcAppr:kcApprN, notApproved:naN,
         loss:Number(c.loss)||0, duplicates:Number(c.duplicates)||0, revenue:Number(c.revenue)||0});
     });
   }catch(e){}
@@ -1651,11 +1655,13 @@ function repCalcMetrics(raw, buyoutPct, kcPct, kcMode, kcFix){
   const notApproved = raw.notApproved || 0;          // Не апрув — факт з CRM
   const buyoutActual = raw.approved ? picked/raw.approved*100 : 0; // фактичний % викупу (довідково)
   const returnCost = raw.loss || 0;                  // Збиток з CRM (loss)
-  const kc = (kcMode==='fix') ? (kcFix||0)*(raw.approved||0) : realMargin*(kcPct/100);
+  // «Апрув для КЦ» — строгий список статусів (за що реально платиться ставка). Легасі-фолбек на approved.
+  const kcAppr = (raw.kcAppr!=null) ? raw.kcAppr : (raw.approved||0);
+  const kc = (kcMode==='fix') ? (kcFix||0)*kcAppr : realMargin*(kcPct/100);
   const costs = raw.budget+kc+returnCost;
   const net = realMargin-costs;
   return{
-    ...raw, buyoutPct, kcPct, kcMode, kcFix, realMargin, picked, returns, inWork, novi, notApproved, buyoutActual, returnCost, kc, costs, net,
+    ...raw, buyoutPct, kcPct, kcMode, kcFix, realMargin, picked, returns, inWork, novi, kcAppr, notApproved, buyoutActual, returnCost, kc, costs, net,
     roas: raw.budget?realMargin/raw.budget:0,
     roi: costs?net/costs:0,
     cpl: raw.leads?raw.budget/raw.leads:0,
@@ -1712,15 +1718,15 @@ function repCalcShop(rows, key){
     const mk = r.date.getFullYear()+"-"+(r.date.getMonth()+1);
     (byMonth[mk] = byMonth[mk] || []).push(r);
   });
-  const sum = {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,novi:0,notApproved:0,loss:0,duplicates:0,revenue:0,
+  const sum = {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,novi:0,kcAppr:0,notApproved:0,loss:0,duplicates:0,revenue:0,
     realMargin:0,picked:0,returns:0,returnCost:0,kc:0,costs:0,net:0};
   Object.entries(byMonth).forEach(([mk, mRows])=>{
     const [y,m] = mk.split("-").map(Number);
     const raw = mRows.reduce((a,r)=>({budget:a.budget+repEffDayBudget(r),leads:a.leads+r.leads,
       approved:a.approved+r.approved,marginPotential:a.marginPotential+r.marginPotential,
       notCounted:a.notCounted+r.notCounted,sales:a.sales+(r.sales||0),refused:a.refused+(r.refused||0),
-      inWork:a.inWork+(r.inWork||0),novi:a.novi+(r.novi||0),notApproved:a.notApproved+(r.notApproved||0),loss:a.loss+(r.loss||0),duplicates:a.duplicates+(r.duplicates||0),revenue:a.revenue+(r.revenue||0)}),
-      {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,novi:0,notApproved:0,loss:0,duplicates:0,revenue:0});
+      inWork:a.inWork+(r.inWork||0),novi:a.novi+(r.novi||0),kcAppr:a.kcAppr+(r.kcAppr||0),notApproved:a.notApproved+(r.notApproved||0),loss:a.loss+(r.loss||0),duplicates:a.duplicates+(r.duplicates||0),revenue:a.revenue+(r.revenue||0)}),
+      {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,novi:0,kcAppr:0,notApproved:0,loss:0,duplicates:0,revenue:0});
     const mm = repCalcMetrics(raw, repGetBuyout(key,y,m), repGetKc(key,y,m), repGetKcMode(key,y,m), repGetKcFix(key,y,m));
     Object.keys(sum).forEach(k=>sum[k]+=mm[k]||0);
   });
@@ -1818,7 +1824,7 @@ function repRenderDaysTable(s){
   const sorted = [...s.days].sort((a,b)=>a.date-b.date);
   // спершу рахуємо кожен день БЕЗ повернень, щоб дізнатись к-сть відмов по днях
   const base = sorted.map(r=>{
-    const raw = {budget:repEffDayBudget(r),leads:r.leads,approved:r.approved,marginPotential:r.marginPotential,notCounted:r.notCounted,sales:r.sales||0,refused:r.refused||0,inWork:r.inWork||0,novi:r.novi||0,notApproved:r.notApproved||0,loss:r.loss||0,duplicates:r.duplicates||0,revenue:r.revenue||0};
+    const raw = {budget:repEffDayBudget(r),leads:r.leads,approved:r.approved,marginPotential:r.marginPotential,notCounted:r.notCounted,sales:r.sales||0,refused:r.refused||0,inWork:r.inWork||0,novi:r.novi||0,kcAppr:r.kcAppr||0,notApproved:r.notApproved||0,loss:r.loss||0,duplicates:r.duplicates||0,revenue:r.revenue||0};
     const y = r.date.getFullYear(), mo = r.date.getMonth()+1;
     const m = repCalcMetrics(raw, repGetBuyout(s.key,y,mo), repGetKc(s.key,y,mo), repGetKcMode(s.key,y,mo), repGetKcFix(s.key,y,mo));
     return {date:r.date, name:r.name, ch:r.ch, ...m};
@@ -1839,12 +1845,12 @@ function repCalcAllSourcesDayRows(rows){
     byDate[dk].rowsByShop[key].push(r);
   });
   return Object.values(byDate).map(day=>{
-    let sum = {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,notApproved:0,loss:0,duplicates:0,revenue:0,realMargin:0,picked:0,returns:0,returnCost:0,kc:0,costs:0,net:0};
+    let sum = {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,novi:0,kcAppr:0,notApproved:0,loss:0,duplicates:0,revenue:0,realMargin:0,picked:0,returns:0,returnCost:0,kc:0,costs:0,net:0};
     Object.entries(day.rowsByShop).forEach(([key,shopRows])=>{
       const raw = shopRows.reduce((a,r)=>({budget:a.budget+repEffDayBudget(r),leads:a.leads+r.leads,approved:a.approved+r.approved,
         marginPotential:a.marginPotential+r.marginPotential,notCounted:a.notCounted+r.notCounted,sales:a.sales+(r.sales||0),refused:a.refused+(r.refused||0),
-        inWork:a.inWork+(r.inWork||0),novi:a.novi+(r.novi||0),notApproved:a.notApproved+(r.notApproved||0),loss:a.loss+(r.loss||0),duplicates:a.duplicates+(r.duplicates||0),revenue:a.revenue+(r.revenue||0)}),
-        {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,novi:0,notApproved:0,loss:0,duplicates:0,revenue:0});
+        inWork:a.inWork+(r.inWork||0),novi:a.novi+(r.novi||0),kcAppr:a.kcAppr+(r.kcAppr||0),notApproved:a.notApproved+(r.notApproved||0),loss:a.loss+(r.loss||0),duplicates:a.duplicates+(r.duplicates||0),revenue:a.revenue+(r.revenue||0)}),
+        {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,sales:0,refused:0,inWork:0,novi:0,kcAppr:0,notApproved:0,loss:0,duplicates:0,revenue:0});
       const y = day.date.getFullYear(), mo = day.date.getMonth()+1;
       const m = repCalcMetrics(raw, repGetBuyout(key,y,mo), repGetKc(key,y,mo), repGetKcMode(key,y,mo), repGetKcFix(key,y,mo));
       Object.keys(sum).forEach(k=>sum[k]+=m[k]||0);
@@ -1936,9 +1942,9 @@ function repRenderAll(){
     approved:a.approved+s.approved,marginPotential:a.marginPotential+s.marginPotential,
     notCounted:a.notCounted+s.notCounted,realMargin:a.realMargin+s.realMargin,
     picked:a.picked+(s.picked||0),returns:a.returns+(s.returns||0),
-    inWork:a.inWork+(s.inWork||0),novi:a.novi+(s.novi||0),notApproved:a.notApproved+(s.notApproved||0),duplicates:a.duplicates+(s.duplicates||0),revenue:a.revenue+(s.revenue||0),
+    inWork:a.inWork+(s.inWork||0),novi:a.novi+(s.novi||0),kcAppr:a.kcAppr+(s.kcAppr||0),notApproved:a.notApproved+(s.notApproved||0),duplicates:a.duplicates+(s.duplicates||0),revenue:a.revenue+(s.revenue||0),
     kc:a.kc+s.kc,returnCost:a.returnCost+s.returnCost,costs:a.costs+s.costs,net:a.net+s.net}),
-    {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,realMargin:0,picked:0,returns:0,inWork:0,novi:0,notApproved:0,duplicates:0,revenue:0,kc:0,returnCost:0,costs:0,net:0});
+    {budget:0,leads:0,approved:0,marginPotential:0,notCounted:0,realMargin:0,picked:0,returns:0,inWork:0,novi:0,kcAppr:0,notApproved:0,duplicates:0,revenue:0,kc:0,returnCost:0,costs:0,net:0});
   const buyoutActualT = T.approved?T.picked/T.approved*100:0;
   const roas = T.budget?T.realMargin/T.budget:0;
   const roi = T.costs?T.net/T.costs:0;
@@ -2050,7 +2056,7 @@ function repRenderAll(){
         <span>Маржа (з CRM): <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.realMargin)}</b></span>
         <span>Забрали: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.picked)}</b></span>
         <span title="Кількість відмов і сума збитку (Убыток) з CRM">Повернення: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.returns)}</b> (${fmt(s.returnCost)} ₴)</span>
-        <span title="КЦ: ${s.kcMode==='fix'?('фікс '+fmt(s.kcFix)+' ₴ × '+fmt(s.approved)+' апрув'):(fmt(s.kcPct)+'% від маржі')}">КЦ: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.kc)}</b></span>
+        <span title="КЦ: ${s.kcMode==='fix'?('фікс '+fmt(s.kcFix)+' ₴ × '+fmt(s.kcAppr!=null?s.kcAppr:s.approved)+' апрув'):(fmt(s.kcPct)+'% від маржі')}">КЦ: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.kc)}</b></span>
         <span>Витрати: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.costs)}</b></span>
         <span title="Заказів не в апрув: Не апрув, Не учитываем, Обмен, Отмена">Не апрув: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.notApproved)}</b></span>
         ${s.duplicates?`<span title="Дублі заказів — не враховуються ніде (ні в заявках, ні в апрув/маржі)">Дублі: <b style="color:#B0793B;font-family:'JetBrains Mono',monospace">${fmt(s.duplicates)}</b></span>`:''}
@@ -2747,12 +2753,12 @@ function finGetMonthlyAdProfit(year, month){
     if(!byShop[k]) byShop[k]=[];
     byShop[k].push(r);
   });
-  let totalBudget=0, totalRealMargin=0, totalNet=0, totalLeads=0, totalApproved=0, totalKc=0, totalReturnCost=0, totalInWork=0, totalNovi=0;
+  let totalBudget=0, totalRealMargin=0, totalNet=0, totalLeads=0, totalApproved=0, totalKcAppr=0, totalKc=0, totalReturnCost=0, totalInWork=0, totalNovi=0;
   let avgKcRate=0, kcRateCount=0;
   Object.entries(byShop).forEach(([key,shopRows])=>{
     const m = repCalcShop(shopRows, key);
     totalBudget+=m.budget; totalRealMargin+=m.realMargin; totalNet+=m.net;
-    totalLeads+=m.leads; totalApproved+=m.approved; totalKc+=m.kc; totalReturnCost+=m.returnCost; totalInWork+=(m.inWork||0); totalNovi+=(m.novi||0);
+    totalLeads+=m.leads; totalApproved+=m.approved; totalKcAppr+=(m.kcAppr||0); totalKc+=m.kc; totalReturnCost+=m.returnCost; totalInWork+=(m.inWork||0); totalNovi+=(m.novi||0);
     if(m.realMargin>0){ avgKcRate += m.kc/m.realMargin; kcRateCount++; }
   });
   // Маржа і прибуток показуються РІВНО як у Звітах (без прихованих коригувань).
@@ -2763,7 +2769,7 @@ function finGetMonthlyAdProfit(year, month){
   const kcOnUpsell = upsellReceived * kcRate; // скільки 5% КЦ зайво впало на допродажі — компенсуємо у витратах
   // adProfit навмисно НЕ віднімає returnCost: вартість відмов уже враховується вручну
   // статтею "Логістика та повернення" в операційних витратах — щоб не віднімати її двічі
-  return {budget:totalBudget, realMargin:totalRealMargin, adProfit:totalNet+totalReturnCost, leads:totalLeads, approved:totalApproved, inWork:totalInWork, novi:totalNovi, kc:totalKc, returnCost:totalReturnCost, upsellReceived, kcOnUpsell, hasData: rows.length>0};
+  return {budget:totalBudget, realMargin:totalRealMargin, adProfit:totalNet+totalReturnCost, leads:totalLeads, approved:totalApproved, kcAppr:totalKcAppr, inWork:totalInWork, novi:totalNovi, kc:totalKc, returnCost:totalReturnCost, upsellReceived, kcOnUpsell, hasData: rows.length>0};
 }
 
 function finToggleCat(key){
@@ -2908,8 +2914,9 @@ function finRenderAll(){
   // ЗП №1 — за апрув (25₴ × апрув). Це і є «КЦ» — вже враховано в adProfit (маржа−бюджет−КЦ),
   // тому показуємо ДОВІДКОВО і в суму категорії НЕ додаємо (щоб не задвоїти).
   if(ad.kc>0){
-    const perAppr = ad.approved ? ad.kc/ad.approved : 0;
-    byCat.salary.items.push({id:null, name:`ЗП №1 — за апрув (${fmt(perAppr)} ₴ × ${fmt(ad.approved)} апрувів) · рахується у сегменті «КЦ», не входить у суму`, amount:ad.kc, synthetic:true, infoOnly:true});
+    const kcApprCnt = (ad.kcAppr!=null) ? ad.kcAppr : ad.approved;
+    const perAppr = kcApprCnt ? ad.kc/kcApprCnt : 0;
+    byCat.salary.items.push({id:null, name:`ЗП №1 — за апрув (${fmt(perAppr)} ₴ × ${fmt(kcApprCnt)} апрувів) · рахується у сегменті «КЦ», не входить у суму`, amount:ad.kc, synthetic:true, infoOnly:true});
   }
   // ЗП №2 — за допродажі (% кожного менеджера від забраних). Це операційна витрата.
   if(upsell.commission>0){
