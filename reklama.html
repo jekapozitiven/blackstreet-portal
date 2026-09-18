@@ -94,9 +94,9 @@ function aggByRange(ads, from, to){
       const cats = days[day] || {};
       for(const ck in cats){
         const c = cats[ck] || {};
-        const t = camp[ck] || (camp[ck] = {key:ck, cat:c.cat||ck, leads:0, approved:0, sum:0, upsSum:0, upsCount:0});
+        const t = camp[ck] || (camp[ck] = {key:ck, cat:c.cat||ck, leads:0, approved:0, sum:0, margin:0, upsSum:0, upsCount:0});
         t.leads += +c.leads||0; t.approved += +c.approved||0; t.sum += +c.sum||0;
-        t.upsSum += +c.upsSum||0; t.upsCount += +c.upsCount||0;
+        t.margin += +c.margin||0; t.upsSum += +c.upsSum||0; t.upsCount += +c.upsCount||0;
       }
     }
     const rows = Object.values(camp).sort((a,b)=> b.leads-a.leads);
@@ -106,14 +106,15 @@ function aggByRange(ads, from, to){
 }
 
 function sumRows(rows){
-  const t = {leads:0,approved:0,sum:0,upsSum:0,upsCount:0};
-  rows.forEach(r=>{t.leads+=r.leads;t.approved+=r.approved;t.sum+=r.sum;t.upsSum+=r.upsSum;t.upsCount+=r.upsCount;});
+  const t = {leads:0,approved:0,sum:0,margin:0,upsSum:0,upsCount:0};
+  rows.forEach(r=>{t.leads+=r.leads;t.approved+=r.approved;t.sum+=r.sum;t.margin+=r.margin;t.upsSum+=r.upsSum;t.upsCount+=r.upsCount;});
   return t;
 }
 
 function row(r, isTot){
   const apr = r.leads ? Math.round(r.approved/r.leads*100) : 0;
   const chk = r.leads ? r.sum/r.leads : 0;
+  const mpl = r.leads ? r.margin/r.leads : 0;
   const cls = isTot ? "tot" : (r.key===MIXED ? "mixed" : (r.key===NOCAT ? "nocat" : ""));
   const name = isTot ? "Разом" : r.cat;
   return `<tr class="${cls}">
@@ -121,7 +122,8 @@ function row(r, isTot){
     <td>${fmt(r.leads)}</td>
     <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(r.sum)}</td>
-    <td>${fmt(chk)}</td>
+    <td class="g">${fmt(r.margin)}</td>
+    <td>${fmt(mpl)}</td>
     <td class="g">${fmt(r.upsSum)}</td>
     <td>${fmt(r.upsCount)}</td>
   </tr>`;
@@ -137,13 +139,13 @@ function render(){
   });
 
   // KPI (всё вместе)
-  const grand = {leads:0,approved:0,sum:0,upsSum:0};
-  srcs.forEach(s=>{const t=sumRows(agg[s]);grand.leads+=t.leads;grand.approved+=t.approved;grand.sum+=t.sum;grand.upsSum+=t.upsSum;});
+  const grand = {leads:0,approved:0,sum:0,margin:0,upsSum:0};
+  srcs.forEach(s=>{const t=sumRows(agg[s]);grand.leads+=t.leads;grand.approved+=t.approved;grand.sum+=t.sum;grand.margin+=t.margin;grand.upsSum+=t.upsSum;});
   const gpct = grand.leads?Math.round(grand.approved/grand.leads*100):0;
   el("kpis").innerHTML = `
     <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
     <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:13px">${gpct}%</span></div></div>
-    <div class="kpi"><div class="l">Сума заявок</div><div class="v">${fmt(grand.sum)} ₴</div></div>
+    <div class="kpi"><div class="l">Маржа</div><div class="v g">${fmt(grand.margin)} ₴</div></div>
     <div class="kpi"><div class="l">Допродажі</div><div class="v g">${fmt(grand.upsSum)} ₴</div></div>`;
 
   let html = "";
@@ -156,7 +158,7 @@ function render(){
       <table>
         <thead><tr>
           <th class="name">Кампанія</th><th>Заявки</th><th>Апрув</th>
-          <th>Сума ₴</th><th>Сер. чек</th><th>Допрод. ₴</th><th>Допрод. к-сть</th>
+          <th>Сума ₴</th><th>Маржа ₴</th><th>Маржа/заявку</th><th>Допрод. ₴</th><th>Допрод. к-сть</th>
         </tr></thead>
         <tbody>
           ${rows.map(r=>row(r,false)).join("")}
