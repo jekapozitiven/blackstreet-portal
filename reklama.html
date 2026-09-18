@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BBB CLUB // Реклама</title>
+<style>
+  :root{
+    --bg:#0f1216; --card:#171b21; --line:#262c35; --text:#e6e9ee; --muted:#8b95a3;
+    --accent:#4f8cff; --green:#22c55e; --orange:#f59e0b; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+  .wrap{max-width:1200px;margin:0 auto;padding:18px}
+  h1{font-size:20px;margin:0 0 2px} .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px}
+  .bar label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+  input[type=date]{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);border:0;color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--card);border:1px solid var(--line);color:var(--text)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .kpi .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:4px;font-family:var(--mono)}
+  .shop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 6px 10px;margin-bottom:16px}
+  .shop h2{font-size:15px;margin:10px 12px 8px;display:flex;justify-content:space-between;align-items:baseline}
+  .shop h2 .t{color:var(--muted);font-size:12px;font-weight:500;font-family:var(--mono)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:7px 10px;text-align:right;border-top:1px solid var(--line);font-family:var(--mono);font-size:13px;white-space:nowrap}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-top:0;text-align:right}
+  td.name,th.name{text-align:left;font-family:inherit;white-space:normal}
+  tr.tot td{border-top:2px solid var(--line);font-weight:700}
+  tr.mixed td.name{color:var(--orange)}
+  tr.nocat td.name{color:var(--muted)}
+  .pct{color:var(--muted)}
+  .g{color:var(--green)}
+  .note{color:var(--muted);font-size:12px;margin:8px 2px}
+  @media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Реклама — кампанії</h1>
+  <div class="sub">Заявки з сайтів (Google-трафік) по кампаніях. Джерело: SalesDrive → категорія товару. Бюджет/CPL/CPA та маржа — підключаємо далі.</div>
+
+  <div class="bar">
+    <label>Від<input type="date" id="from"></label>
+    <label>До<input type="date" id="to"></label>
+    <button id="apply">Показати</button>
+    <button class="ghost" id="d7">7 днів</button>
+    <button class="ghost" id="d30">30 днів</button>
+    <button class="ghost" id="all">Весь період</button>
+    <button class="ghost" id="reload">↻ Оновити</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+  <div id="shops"></div>
+  <div class="note" id="status">Завантаження…</div>
+</div>
+
+<script>
+const FB = "https://owner-portal-1649e-default-rtdb.europe-west1.firebasedatabase.app";
+const MIXED = "__потребує_розподілу__", NOCAT = "_no_cat";
+let ADS = {};
+
+const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
+const el = id => document.getElementById(id);
+
+async function loadData(){
+  el("status").textContent = "Завантаження…";
+  const r = await fetch(FB + "/shop-reports/ads.json");
+  ADS = (await r.json()) || {};
+  const [mn,mx] = bounds(ADS);
+  if(mn && !el("from").value) el("from").value = mn;
+  if(mx && !el("to").value) el("to").value = mx;
+  render();
+}
+
+function bounds(ads){
+  let mn=null, mx=null;
+  for(const s in ads) for(const d in ads[s]){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
+  return [mn,mx];
+}
+
+// чистая агрегация по диапазону: источник -> [кампании], + итоги
+function aggByRange(ads, from, to){
+  const out = {};
+  for(const src in ads){
+    const camp = {};
+    const days = ads[src] || {};
+    for(const day in days){
+      if(from && day < from) continue;
+      if(to && day > to) continue;
+      const cats = days[day] || {};
+      for(const ck in cats){
+        const c = cats[ck] || {};
+        const t = camp[ck] || (camp[ck] = {key:ck, cat:c.cat||ck, leads:0, approved:0, sum:0, upsSum:0, upsCount:0});
+        t.leads += +c.leads||0; t.approved += +c.approved||0; t.sum += +c.sum||0;
+        t.upsSum += +c.upsSum||0; t.upsCount += +c.upsCount||0;
+      }
+    }
+    const rows = Object.values(camp).sort((a,b)=> b.leads-a.leads);
+    out[src] = rows;
+  }
+  return out;
+}
+
+function sumRows(rows){
+  const t = {leads:0,approved:0,sum:0,upsSum:0,upsCount:0};
+  rows.forEach(r=>{t.leads+=r.leads;t.approved+=r.approved;t.sum+=r.sum;t.upsSum+=r.upsSum;t.upsCount+=r.upsCount;});
+  return t;
+}
+
+function row(r, isTot){
+  const apr = r.leads ? Math.round(r.approved/r.leads*100) : 0;
+  const chk = r.leads ? r.sum/r.leads : 0;
+  const cls = isTot ? "tot" : (r.key===MIXED ? "mixed" : (r.key===NOCAT ? "nocat" : ""));
+  const name = isTot ? "Разом" : r.cat;
+  return `<tr class="${cls}">
+    <td class="name">${name}</td>
+    <td>${fmt(r.leads)}</td>
+    <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
+    <td>${fmt(r.sum)}</td>
+    <td>${fmt(chk)}</td>
+    <td class="g">${fmt(r.upsSum)}</td>
+    <td>${fmt(r.upsCount)}</td>
+  </tr>`;
+}
+
+function render(){
+  const from = el("from").value, to = el("to").value;
+  const agg = aggByRange(ADS, from, to);
+  const order = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
+  const srcs = Object.keys(agg).sort((a,b)=>{
+    const ia=order.indexOf(a), ib=order.indexOf(b);
+    return (ia<0?9:ia)-(ib<0?9:ib);
+  });
+
+  // KPI (всё вместе)
+  const grand = {leads:0,approved:0,sum:0,upsSum:0};
+  srcs.forEach(s=>{const t=sumRows(agg[s]);grand.leads+=t.leads;grand.approved+=t.approved;grand.sum+=t.sum;grand.upsSum+=t.upsSum;});
+  const gpct = grand.leads?Math.round(grand.approved/grand.leads*100):0;
+  el("kpis").innerHTML = `
+    <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
+    <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:13px">${gpct}%</span></div></div>
+    <div class="kpi"><div class="l">Сума заявок</div><div class="v">${fmt(grand.sum)} ₴</div></div>
+    <div class="kpi"><div class="l">Допродажі</div><div class="v g">${fmt(grand.upsSum)} ₴</div></div>`;
+
+  let html = "";
+  for(const s of srcs){
+    const rows = agg[s];
+    const t = sumRows(rows);
+    const tpct = t.leads?Math.round(t.approved/t.leads*100):0;
+    html += `<div class="shop">
+      <h2>${s} <span class="t">заявок ${fmt(t.leads)} · апрув ${fmt(t.approved)} (${tpct}%) · сума ${fmt(t.sum)} ₴</span></h2>
+      <table>
+        <thead><tr>
+          <th class="name">Кампанія</th><th>Заявки</th><th>Апрув</th>
+          <th>Сума ₴</th><th>Сер. чек</th><th>Допрод. ₴</th><th>Допрод. к-сть</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>row(r,false)).join("")}
+          ${row(Object.assign({key:"_tot"}, t), true)}
+        </tbody>
+      </table>
+    </div>`;
+  }
+  el("shops").innerHTML = html || "<div class='note'>Немає даних за період.</div>";
+  el("status").textContent = "Оновлено: " + new Date().toLocaleString("uk-UA");
+}
+
+function setRange(days){
+  const [,mx] = bounds(ADS);
+  if(!mx) return;
+  const to = mx;
+  const d = new Date(mx); d.setDate(d.getDate()-(days-1));
+  el("from").value = d.toISOString().slice(0,10);
+  el("to").value = to;
+  render();
+}
+
+el("apply").onclick = render;
+el("reload").onclick = loadData;
+el("d7").onclick = ()=>setRange(7);
+el("d30").onclick = ()=>setRange(30);
+el("all").onclick = ()=>{ const [mn,mx]=bounds(ADS); el("from").value=mn||""; el("to").value=mx||""; render(); };
+
+loadData();
+</script>
+</body>
+</html>
