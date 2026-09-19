@@ -7,41 +7,44 @@
 <style>
   :root{
     --bg:#0f1216; --card:#171b21; --line:#262c35; --text:#e6e9ee; --muted:#8b95a3;
-    --accent:#4f8cff; --green:#22c55e; --orange:#f59e0b; --mono:'JetBrains Mono',ui-monospace,monospace;
+    --accent:#4f8cff; --green:#22c55e; --red:#ef4444; --orange:#f59e0b; --mono:'JetBrains Mono',ui-monospace,monospace;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
-  .wrap{max-width:1200px;margin:0 auto;padding:18px}
+  .wrap{max-width:1280px;margin:0 auto;padding:18px}
   h1{font-size:20px;margin:0 0 2px} .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
-  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:16px}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
   .bar label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
   input[type=date]{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px}
   button{background:var(--accent);border:0;color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
   button.ghost{background:var(--card);border:1px solid var(--line);color:var(--text)}
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  button.ghost.on{border-color:var(--accent);color:#fff}
+  select{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:5px 7px;font-size:12px;max-width:230px}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
   .kpi .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-  .kpi .v{font-size:22px;font-weight:700;margin-top:4px;font-family:var(--mono)}
-  .shop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 6px 10px;margin-bottom:16px}
-  .shop h2{font-size:15px;margin:10px 12px 8px;display:flex;justify-content:space-between;align-items:baseline}
+  .kpi .v{font-size:20px;font-weight:700;margin-top:4px;font-family:var(--mono)}
+  .shop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 6px 10px;margin-bottom:16px;overflow-x:auto}
+  .shop h2{font-size:15px;margin:10px 12px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   .shop h2 .t{color:var(--muted);font-size:12px;font-weight:500;font-family:var(--mono)}
-  table{width:100%;border-collapse:collapse}
+  table{width:100%;border-collapse:collapse;min-width:820px}
   th,td{padding:7px 10px;text-align:right;border-top:1px solid var(--line);font-family:var(--mono);font-size:13px;white-space:nowrap}
-  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-top:0;text-align:right}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-top:0}
   td.name,th.name{text-align:left;font-family:inherit;white-space:normal}
   tr.tot td{border-top:2px solid var(--line);font-weight:700}
-  tr.mixed td.name{color:var(--orange)}
-  tr.nocat td.name{color:var(--muted)}
-  .pct{color:var(--muted)}
-  .g{color:var(--green)}
+  tr.mixed td.name{color:var(--orange)} tr.nocat td.name{color:var(--muted)}
+  tr.warn td{color:var(--orange)}
+  .pct{color:var(--muted)} .g{color:var(--green)} .r{color:var(--red)}
   .note{color:var(--muted);font-size:12px;margin:8px 2px}
-  @media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .maprow{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line)}
+  .maprow .gname{flex:1;font-size:13px} .maprow .gb{font-family:var(--mono);color:var(--muted);width:90px;text-align:right}
+  @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Реклама — кампанії</h1>
-  <div class="sub">Заявки з сайтів (Google-трафік) по кампаніях. Джерело: SalesDrive → категорія товару. Бюджет/CPL/CPA та маржа — підключаємо далі.</div>
+  <h1>Реклама — категорії та бюджет</h1>
+  <div class="sub">Заявки/маржа з сайтів (Google-трафік) + витрати з Google Ads по типах товару. Прив'язка Google-тип → категорія робиться раз у вкладці «Прив'язка».</div>
 
   <div class="bar">
     <label>Від<input type="date" id="from"></label>
@@ -50,142 +53,188 @@
     <button class="ghost" id="d7">7 днів</button>
     <button class="ghost" id="d30">30 днів</button>
     <button class="ghost" id="all">Весь період</button>
-    <button class="ghost" id="reload">↻ Оновити</button>
+    <span style="flex:1"></span>
+    <button class="ghost on" id="vTable">Таблиця</button>
+    <button class="ghost" id="vMap">Прив'язка</button>
+    <button class="ghost" id="reload">↻</button>
   </div>
 
-  <div class="kpis" id="kpis"></div>
-  <div id="shops"></div>
+  <div id="tableView">
+    <div class="kpis" id="kpis"></div>
+    <div id="shops"></div>
+  </div>
+  <div id="mapView" style="display:none"></div>
   <div class="note" id="status">Завантаження…</div>
 </div>
 
 <script>
 const FB = "https://owner-portal-1649e-default-rtdb.europe-west1.firebasedatabase.app";
 const MIXED = "__потребує_розподілу__", NOCAT = "_no_cat";
-let ADS = {};
+const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
+let ADS = {}, GCAT = {}, MAP = {};
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
 const el = id => document.getElementById(id);
+const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const r = await fetch(FB + "/shop-reports/ads.json");
-  ADS = (await r.json()) || {};
-  const [mn,mx] = bounds(ADS);
-  if(mn && !el("from").value) el("from").value = mn;
-  if(mx && !el("to").value) el("to").value = mx;
+  const [a,g,m] = await Promise.all([
+    fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-mapcat.json").then(r=>r.json()),
+  ]);
+  ADS=a||{}; GCAT=g||{}; MAP=m||{};
+  const [mn,mx]=bounds();
+  if(mn&&!el("from").value) el("from").value=mn;
+  if(mx&&!el("to").value) el("to").value=mx;
   render();
 }
 
-function bounds(ads){
-  let mn=null, mx=null;
-  for(const s in ads) for(const d in ads[s]){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
+function bounds(){
+  let mn=null,mx=null;
+  for(const s in ADS) for(const d in ADS[s]){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
   return [mn,mx];
 }
+function sources(){
+  const s=new Set([...Object.keys(ADS),...Object.keys(GCAT)]);
+  return [...s].sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return (ia<0?9:ia)-(ib<0?9:ib);});
+}
+function inRange(d,f,t){ return (!f||d>=f)&&(!t||d<=t); }
 
-// чистая агрегация по диапазону: источник -> [кампании], + итоги
-function aggByRange(ads, from, to){
-  const out = {};
-  for(const src in ads){
-    const camp = {};
-    const days = ads[src] || {};
-    for(const day in days){
-      if(from && day < from) continue;
-      if(to && day > to) continue;
-      const cats = days[day] || {};
-      for(const ck in cats){
-        const c = cats[ck] || {};
-        const t = camp[ck] || (camp[ck] = {key:ck, cat:c.cat||ck, leads:0, approved:0, sum:0, margin:0, upsSum:0, upsCount:0});
-        t.leads += +c.leads||0; t.approved += +c.approved||0; t.sum += +c.sum||0;
-        t.margin += +c.margin||0; t.upsSum += +c.upsSum||0; t.upsCount += +c.upsCount||0;
-      }
-    }
-    const rows = Object.values(camp).sort((a,b)=> b.leads-a.leads);
-    out[src] = rows;
-  }
+// сумма витрат Google-типу за період
+function sumCost(obj,f,t){ let s=0; for(const k in obj){ if(k==="name")continue; if(inRange(k,f,t)) s+=+obj[k]||0; } return s; }
+
+// агрегати наших категорій за період: catKey -> {cat,leads,approved,sum,margin,upsSum}
+function aggCats(src,f,t){
+  const out={}; const days=(ADS[src]||{});
+  for(const day in days){ if(!inRange(day,f,t))continue;
+    for(const ck in days[day]){ const c=days[day][ck];
+      const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sum:0,margin:0,upsSum:0});
+      o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
+    }}
   return out;
 }
-
-function sumRows(rows){
-  const t = {leads:0,approved:0,sum:0,margin:0,upsSum:0,upsCount:0};
-  rows.forEach(r=>{t.leads+=r.leads;t.approved+=r.approved;t.sum+=r.sum;t.margin+=r.margin;t.upsSum+=r.upsSum;t.upsCount+=r.upsCount;});
-  return t;
+// бюджет по нашим категоріям (сума прив'язаних Google-типів) + непривʼязаний
+function budgetByCat(src,f,t){
+  const by={}, m=(MAP[src]||{}), g=(GCAT[src]||{}); let unmapped=0, total=0;
+  for(const gk in g){ const b=sumCost(g[gk],f,t); total+=b;
+    const catKey=m[gk];
+    if(catKey) by[catKey]=(by[catKey]||0)+b; else unmapped+=b;
+  }
+  return {by,unmapped,total};
 }
-
-function row(r, isTot){
-  const apr = r.leads ? Math.round(r.approved/r.leads*100) : 0;
-  const chk = r.leads ? r.sum/r.leads : 0;
-  const mpl = r.leads ? r.margin/r.leads : 0;
-  const cls = isTot ? "tot" : (r.key===MIXED ? "mixed" : (r.key===NOCAT ? "nocat" : ""));
-  const name = isTot ? "Разом" : r.cat;
-  return `<tr class="${cls}">
-    <td class="name">${name}</td>
-    <td>${fmt(r.leads)}</td>
-    <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
-    <td>${fmt(r.sum)}</td>
-    <td class="g">${fmt(r.margin)}</td>
-    <td>${fmt(mpl)}</td>
-    <td class="g">${fmt(r.upsSum)}</td>
-    <td>${fmt(r.upsCount)}</td>
-  </tr>`;
+// список наших категорій (для випадайок) з іменами
+function ourCats(src){
+  const a=aggCats(src,null,null); return Object.values(a).map(c=>({key:c.key,cat:c.cat})).sort((x,y)=>x.cat.localeCompare(y.cat,"uk"));
 }
 
 function render(){
-  const from = el("from").value, to = el("to").value;
-  const agg = aggByRange(ADS, from, to);
-  const order = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
-  const srcs = Object.keys(agg).sort((a,b)=>{
-    const ia=order.indexOf(a), ib=order.indexOf(b);
-    return (ia<0?9:ia)-(ib<0?9:ib);
-  });
+  const f=el("from").value, t=el("to").value;
+  if(el("mapView").style.display!=="none"){ renderMap(f,t); }
+  else { renderTable(f,t); }
+  el("status").textContent="Оновлено: "+new Date().toLocaleString("uk-UA");
+}
 
-  // KPI (всё вместе)
-  const grand = {leads:0,approved:0,sum:0,margin:0,upsSum:0};
-  srcs.forEach(s=>{const t=sumRows(agg[s]);grand.leads+=t.leads;grand.approved+=t.approved;grand.sum+=t.sum;grand.margin+=t.margin;grand.upsSum+=t.upsSum;});
-  const gpct = grand.leads?Math.round(grand.approved/grand.leads*100):0;
-  el("kpis").innerHTML = `
-    <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
-    <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:13px">${gpct}%</span></div></div>
-    <div class="kpi"><div class="l">Маржа</div><div class="v g">${fmt(grand.margin)} ₴</div></div>
-    <div class="kpi"><div class="l">Допродажі</div><div class="v g">${fmt(grand.upsSum)} ₴</div></div>`;
-
-  let html = "";
-  for(const s of srcs){
-    const rows = agg[s];
-    const t = sumRows(rows);
-    const tpct = t.leads?Math.round(t.approved/t.leads*100):0;
-    html += `<div class="shop">
-      <h2>${s} <span class="t">заявок ${fmt(t.leads)} · апрув ${fmt(t.approved)} (${tpct}%) · сума ${fmt(t.sum)} ₴</span></h2>
-      <table>
-        <thead><tr>
-          <th class="name">Кампанія</th><th>Заявки</th><th>Апрув</th>
-          <th>Сума ₴</th><th>Маржа ₴</th><th>Маржа/заявку</th><th>Допрод. ₴</th><th>Допрод. к-сть</th>
-        </tr></thead>
-        <tbody>
-          ${rows.map(r=>row(r,false)).join("")}
-          ${row(Object.assign({key:"_tot"}, t), true)}
-        </tbody>
-      </table>
-    </div>`;
+function renderTable(f,t){
+  const srcs=sources();
+  const grand={leads:0,approved:0,margin:0,budget:0,ups:0};
+  let html="";
+  for(const src of srcs){
+    const cats=aggCats(src,f,t); const {by,unmapped,total}=budgetByCat(src,f,t);
+    const rows=Object.values(cats).map(c=>{
+      const budget=by[c.key]||0;
+      return {...c, budget, cpl:c.leads?budget/c.leads:0, cpa:c.approved?budget/c.approved:0, net:c.margin-budget};
+    }).sort((a,b)=>b.leads-a.leads);
+    const tot=rows.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
+      {leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0});
+    tot.budget = total; // весь бюджет магазину (враховуючи непривʼязаний)
+    grand.leads+=tot.leads;grand.approved+=tot.approved;grand.margin+=tot.margin;grand.budget+=total;grand.ups+=tot.upsSum;
+    const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
+    html+=`<div class="shop"><h2>${src}
+        <span class="t">заявок ${fmt(tot.leads)} · апрув ${fmt(tot.approved)} (${tpct}%) · маржа ${fmt(tot.margin)} · бюджет ${fmt(total)} ₴</span></h2>
+      <table><thead><tr>
+        <th class="name">Категорія</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
+        <th>Бюджет ₴</th><th>CPL</th><th>CPA</th><th>Чистими ₴</th><th>Допрод ₴</th>
+      </tr></thead><tbody>
+        ${rows.map(r=>rowHtml(r)).join("")}
+        ${unmapped>0?`<tr class="warn"><td class="name">Бюджет без прив'язки</td><td>—</td><td>—</td><td>—</td><td>${fmt(unmapped)}</td><td>—</td><td>—</td><td class="r">-${fmt(unmapped)}</td><td>—</td></tr>`:""}
+        ${rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,cpl:tot.leads?tot.budget/tot.leads:0,cpa:tot.approved?tot.budget/tot.approved:0,net:tot.margin-tot.budget,upsSum:tot.upsSum},true)}
+      </tbody></table></div>`;
   }
-  el("shops").innerHTML = html || "<div class='note'>Немає даних за період.</div>";
-  el("status").textContent = "Оновлено: " + new Date().toLocaleString("uk-UA");
+  const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
+  const gnet=grand.margin-grand.budget;
+  el("kpis").innerHTML=`
+    <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
+    <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div></div>
+    <div class="kpi"><div class="l">Маржа</div><div class="v g">${fmt(grand.margin)} ₴</div></div>
+    <div class="kpi"><div class="l">Бюджет</div><div class="v">${fmt(grand.budget)} ₴</div></div>
+    <div class="kpi"><div class="l">Чистими</div><div class="v ${gnet>=0?'g':'r'}">${fmt(gnet)} ₴</div></div>`;
+  el("shops").innerHTML=html||"<div class='note'>Немає даних.</div>";
 }
 
-function setRange(days){
-  const [,mx] = bounds(ADS);
-  if(!mx) return;
-  const to = mx;
-  const d = new Date(mx); d.setDate(d.getDate()-(days-1));
-  el("from").value = d.toISOString().slice(0,10);
-  el("to").value = to;
-  render();
+function rowHtml(r,isTot){
+  const apr=r.leads?Math.round(r.approved/r.leads*100):0;
+  const cls=isTot?"tot":(r.key===MIXED?"mixed":(r.key===NOCAT?"nocat":""));
+  return `<tr class="${cls}">
+    <td class="name">${r.cat}</td>
+    <td>${fmt(r.leads)}</td>
+    <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
+    <td>${fmt(r.margin)}</td>
+    <td>${r.budget?fmt(r.budget):"—"}</td>
+    <td>${r.budget?fmt(r.cpl):"—"}</td>
+    <td>${r.budget&&r.approved?fmt(r.cpa):"—"}</td>
+    <td class="${r.net>=0?'g':'r'}">${r.budget?fmt(r.net):"—"}</td>
+    <td class="g">${fmt(r.upsSum)}</td>
+  </tr>`;
 }
 
-el("apply").onclick = render;
-el("reload").onclick = loadData;
-el("d7").onclick = ()=>setRange(7);
-el("d30").onclick = ()=>setRange(30);
-el("all").onclick = ()=>{ const [mn,mx]=bounds(ADS); el("from").value=mn||""; el("to").value=mx||""; render(); };
+function renderMap(f,t){
+  el("kpis").innerHTML="";
+  const srcs=sources(); let html="";
+  for(const src of srcs){
+    const g=(GCAT[src]||{}); const m=(MAP[src]||{}); const cats=ourCats(src);
+    const gtypes=Object.keys(g).map(gk=>({key:gk,name:g[gk].name||gk,budget:sumCost(g[gk],f,t)})).sort((a,b)=>b.budget-a.budget);
+    const opts=cats.map(c=>`<option value="${c.key}">${c.cat}</option>`).join("");
+    html+=`<div class="shop"><h2>${src} <span class="t">прив'яжи Google-тип → наша категорія</span></h2>`;
+    for(const gt of gtypes){
+      const cur=m[gt.key]||"";
+      html+=`<div class="maprow">
+        <div class="gname">${gt.name}</div>
+        <div class="gb">${fmt(gt.budget)} ₴</div>
+        <select data-src="${src}" data-gk="${gt.key}">
+          <option value="">— не привʼязано —</option>${opts}
+        </select></div>`;
+    }
+    html+=`</div>`;
+  }
+  el("mapView").innerHTML=html;
+  // проставити поточні значення + слухати зміни
+  el("mapView").querySelectorAll("select").forEach(sel=>{
+    const src=sel.dataset.src, gk=sel.dataset.gk;
+    sel.value=(MAP[src]||{})[gk]||"";
+    sel.onchange=()=>saveMap(src,gk,sel.value);
+  });
+}
+
+async function saveMap(src,gk,catKey){
+  MAP[src]=MAP[src]||{}; MAP[src][gk]=catKey||null;
+  el("status").textContent="Збереження…";
+  try{
+    await fetch(FB+"/shop-reports/ads-mapcat/"+enc(src)+".json",
+      {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({[gk]:catKey||null})});
+    el("status").textContent="Збережено ✓ "+new Date().toLocaleTimeString("uk-UA");
+  }catch(e){ el("status").textContent="Помилка збереження"; }
+}
+
+function setRange(days){ const [,mx]=bounds(); if(!mx)return; const d=new Date(mx); d.setDate(d.getDate()-(days-1)); el("from").value=d.toISOString().slice(0,10); el("to").value=mx; render(); }
+el("apply").onclick=render;
+el("reload").onclick=loadData;
+el("d7").onclick=()=>setRange(7);
+el("d30").onclick=()=>setRange(30);
+el("all").onclick=()=>{const [mn,mx]=bounds();el("from").value=mn||"";el("to").value=mx||"";render();};
+el("vTable").onclick=()=>{el("vTable").classList.add("on");el("vMap").classList.remove("on");el("tableView").style.display="";el("mapView").style.display="none";render();};
+el("vMap").onclick=()=>{el("vMap").classList.add("on");el("vTable").classList.remove("on");el("tableView").style.display="none";el("mapView").style.display="";render();};
 
 loadData();
 </script>
