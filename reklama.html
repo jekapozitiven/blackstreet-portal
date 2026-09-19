@@ -124,10 +124,15 @@ function budgetByCat(src,f,t){
   }
   return {by,unmapped,total};
 }
-// список наших категорій (для випадайок) з іменами
-function ourCats(src){
-  const a=aggCats(src,null,null); return Object.values(a).map(c=>({key:c.key,cat:c.cat})).sort((x,y)=>x.cat.localeCompare(y.cat,"uk"));
+// ВСІ наші категорії (обʼєднання по всіх магазинах) — для випадайок і авто-підбору
+function allCats(){
+  const seen={};
+  for(const s in ADS) for(const d in ADS[s]) for(const ck in ADS[s][d]){
+    if(!seen[ck]) seen[ck]={key:ck,cat:ADS[s][d][ck].cat||ck};
+  }
+  return Object.values(seen).sort((a,b)=>a.cat.localeCompare(b.cat,"uk"));
 }
+function catNames(){ const m={}; allCats().forEach(c=>m[c.key]=c.cat); return m; }
 
 function render(){
   const f=el("from").value, t=el("to").value;
@@ -142,10 +147,15 @@ function renderTable(f,t){
   let html="";
   for(const src of srcs){
     const cats=aggCats(src,f,t); const {by,unmapped,total}=budgetByCat(src,f,t);
+    const names=catNames();
     const rows=Object.values(cats).map(c=>{
       const budget=by[c.key]||0;
       return {...c, budget, cpl:c.leads?budget/c.leads:0, cpa:c.approved?budget/c.approved:0, net:c.margin-budget};
-    }).sort((a,b)=>b.leads-a.leads);
+    });
+    // категорії з бюджетом, але без заявок за період — теж показуємо
+    for(const ck in by){ if(!cats[ck]){ const b=by[ck];
+      rows.push({key:ck,cat:names[ck]||ck,leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:b,cpl:0,cpa:0,net:-b}); } }
+    rows.sort((a,b)=>b.leads-a.leads||b.budget-a.budget);
     const tot=rows.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
       {leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0});
     tot.budget = total; // весь бюджет магазину (враховуючи непривʼязаний)
@@ -195,7 +205,7 @@ function renderMap(f,t){
   let html=`<div style="margin:0 2px 12px"><button id="autoBtn">✨ Авто-підбір</button>
     <span class="note" style="margin-left:8px">сам зіставить Google-підтипи з категоріями; порожні/невірні поправ вручну</span></div>`;
   for(const src of srcs){
-    const g=(GCAT[src]||{}); const m=(MAP[src]||{}); const cats=ourCats(src);
+    const g=(GCAT[src]||{}); const m=(MAP[src]||{}); const cats=allCats();
     const gtypes=Object.keys(g).map(gk=>({key:gk,name:g[gk].name||gk,budget:sumCost(g[gk],f,t)})).sort((a,b)=>b.budget-a.budget);
     const opts=cats.map(c=>`<option value="${c.key}">${c.cat}</option>`).join("");
     html+=`<div class="shop"><h2>${src} <span class="t">прив'яжи Google-тип → наша категорія</span></h2>`;
@@ -243,7 +253,7 @@ function normSet(s){
 }
 function jac(a,b){ let i=0; a.forEach(x=>{if(b.has(x))i++;}); const u=new Set([...a,...b]).size; return u?i/u:0; }
 function autoMatchSrc(src){
-  const g=GCAT[src]||{}, cats=ourCats(src).map(c=>({key:c.key,cat:c.cat,set:normSet(c.cat)}));
+  const g=GCAT[src]||{}, cats=allCats().map(c=>({key:c.key,cat:c.cat,set:normSet(c.cat)}));
   const patch={};
   for(const gk in g){
     if((MAP[src]||{})[gk]) continue;              // вже привʼязані не чіпаємо
