@@ -71,20 +71,22 @@
 const FB = "https://owner-portal-1649e-default-rtdb.europe-west1.firebasedatabase.app";
 const MIXED = "__потребує_розподілу__", NOCAT = "_no_cat";
 const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
-let ADS = {}, GCAT = {}, MAP = {};
+let ADS = {}, GCAT = {}, MAP = {}, CATLIST = [];
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
 const el = id => document.getElementById(id);
 const enc = encodeURIComponent;
+const fbkey = s => (String(s==null?"":s).replace(/[.$#/\[\]]/g,"_").trim())||"_";
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m] = await Promise.all([
+  const [a,g,m,cl] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-mapcat.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-catlist.json").then(r=>r.json()),
   ]);
-  ADS=a||{}; GCAT=g||{}; MAP=m||{};
+  ADS=a||{}; GCAT=g||{}; MAP=m||{}; CATLIST=cl||{};
   const [mn,mx]=bounds();
   if(mn&&!el("from").value) el("from").value=mn;
   if(mx&&!el("to").value) el("to").value=mx;
@@ -125,14 +127,14 @@ function budgetByCat(src,f,t){
   return {by,unmapped,total};
 }
 // ВСІ наші категорії (обʼєднання по всіх магазинах) — для випадайок і авто-підбору
-function allCats(){
-  const seen={};
-  for(const s in ADS) for(const d in ADS[s]) for(const ck in ADS[s][d]){
-    if(!seen[ck]) seen[ck]={key:ck,cat:ADS[s][d][ck].cat||ck};
-  }
+// категорії КОНКРЕТНОГО магазину: із замовлень + майстер-список каталогу цього магазину
+function catsForShop(src){
+  const seen={}, days=ADS[src]||{};
+  for(const d in days) for(const ck in days[d]){ if(!seen[ck]) seen[ck]={key:ck,cat:days[d][ck].cat||ck}; }
+  for(const name of (CATLIST[src]||[])){ const k=fbkey(name); if(!seen[k]) seen[k]={key:k,cat:name}; }
   return Object.values(seen).sort((a,b)=>a.cat.localeCompare(b.cat,"uk"));
 }
-function catNames(){ const m={}; allCats().forEach(c=>m[c.key]=c.cat); return m; }
+function catNamesForShop(src){ const m={}; catsForShop(src).forEach(c=>m[c.key]=c.cat); return m; }
 
 function render(){
   const f=el("from").value, t=el("to").value;
@@ -147,7 +149,7 @@ function renderTable(f,t){
   let html="";
   for(const src of srcs){
     const cats=aggCats(src,f,t); const {by,unmapped,total}=budgetByCat(src,f,t);
-    const names=catNames();
+    const names=catNamesForShop(src);
     const rows=Object.values(cats).map(c=>{
       const budget=by[c.key]||0;
       return {...c, budget, cpl:c.leads?budget/c.leads:0, cpa:c.approved?budget/c.approved:0, net:c.margin-budget};
@@ -205,7 +207,7 @@ function renderMap(f,t){
   let html=`<div style="margin:0 2px 12px"><button id="autoBtn">✨ Авто-підбір</button>
     <span class="note" style="margin-left:8px">сам зіставить Google-підтипи з категоріями; порожні/невірні поправ вручну</span></div>`;
   for(const src of srcs){
-    const g=(GCAT[src]||{}); const m=(MAP[src]||{}); const cats=allCats();
+    const g=(GCAT[src]||{}); const m=(MAP[src]||{}); const cats=catsForShop(src);
     const gtypes=Object.keys(g).map(gk=>({key:gk,name:g[gk].name||gk,budget:sumCost(g[gk],f,t)})).sort((a,b)=>b.budget-a.budget);
     const opts=cats.map(c=>`<option value="${c.key}">${c.cat}</option>`).join("");
     html+=`<div class="shop"><h2>${src} <span class="t">прив'яжи Google-тип → наша категорія</span></h2>`;
@@ -253,7 +255,7 @@ function normSet(s){
 }
 function jac(a,b){ let i=0; a.forEach(x=>{if(b.has(x))i++;}); const u=new Set([...a,...b]).size; return u?i/u:0; }
 function autoMatchSrc(src){
-  const g=GCAT[src]||{}, cats=allCats().map(c=>({key:c.key,cat:c.cat,set:normSet(c.cat)}));
+  const g=GCAT[src]||{}, cats=catsForShop(src).map(c=>({key:c.key,cat:c.cat,set:normSet(c.cat)}));
   const patch={};
   for(const gk in g){
     if((MAP[src]||{})[gk]) continue;              // вже привʼязані не чіпаємо
