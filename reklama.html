@@ -191,7 +191,9 @@ function rowHtml(r,isTot){
 
 function renderMap(f,t){
   el("kpis").innerHTML="";
-  const srcs=sources(); let html="";
+  const srcs=sources();
+  let html=`<div style="margin:0 2px 12px"><button id="autoBtn">✨ Авто-підбір</button>
+    <span class="note" style="margin-left:8px">сам зіставить Google-підтипи з категоріями; порожні/невірні поправ вручну</span></div>`;
   for(const src of srcs){
     const g=(GCAT[src]||{}); const m=(MAP[src]||{}); const cats=ourCats(src);
     const gtypes=Object.keys(g).map(gk=>({key:gk,name:g[gk].name||gk,budget:sumCost(g[gk],f,t)})).sort((a,b)=>b.budget-a.budget);
@@ -209,12 +211,59 @@ function renderMap(f,t){
     html+=`</div>`;
   }
   el("mapView").innerHTML=html;
+  const ab=el("autoBtn"); if(ab) ab.onclick=autoMatchAll;
   // проставити поточні значення + слухати зміни
   el("mapView").querySelectorAll("select").forEach(sel=>{
     const src=sel.dataset.src, gk=sel.dataset.gk;
     sel.value=(MAP[src]||{})[gk]||"";
     sel.onchange=()=>saveMap(src,gk,sel.value);
   });
+}
+
+// ---- авто-підбір Google-підтип -> наша категорія (по кореню слів, рус/укр) ----
+// вхід нормалізуємо: і/ї/'→и, є→е, ґ→г; далі корені у канонічну форму.
+const STEM=[
+  ["кофт|толстовк|реглан|худ|свитшот|свитер|кардиган","кофта"],
+  ["зим","зима"],["утепл","утепл"],["костюм","костюм"],
+  ["бомбер","бомбер"],["анорак","анорак"],["ветров|витров","витров"],
+  ["демисезон","демсез"],["парк","парка"],["пухов","пухов"],["куртк","куртка"],
+  ["штан|брюк","штан"],["спорт","спорт"],["летн|литн","лит"],["весен|весн","весна"],["осен|осин","осинь"],
+  ["футболк","футболка"],["жилет|безрукавк","жилет"],["сумк|сумочк|клатч","сумка"],
+  ["мессендж|месендж","месендж"],["рюкзак","рюкзак"],["дорож","дорож"],["кошельк|гаман","гаман"],
+  ["кроссовк|кросивк|кросовк|кед","кросивка"],["ботинк|черевик","черевик"],
+  ["набор|набир","набор"],["шорт","шорт"],["рубашк|сороч","сорочка"],["кепк","кепка"],["панамк","панамка"],
+  ["носк|шкарпет","шкарпетка"],["дитяч|детск","дитяч"],["одежд|одяг|взутт|обув","одяг"],
+  ["плат","плаття"],["пижам","пижама"],["жиноч|женск","жин"]
+];
+function canon(tok){ for(let i=0;i<STEM.length;i++){ if(new RegExp(STEM[i][0]).test(tok)) return STEM[i][1]; } return tok; }
+function normSet(s){
+  s=(s||"").toLowerCase().replace(/[іїʼ'’]/g,"и").replace(/є/g,"е").replace(/ґ/g,"г");
+  const stop=new Set(["мужские","мужская","мужской","мужчин","чоловичи","чоловича","чоловичий","и","та","для"]);
+  return new Set(s.split(/[\s|\/_,\-–—+()]+/).filter(Boolean).filter(t=>!stop.has(t)).map(canon));
+}
+function jac(a,b){ let i=0; a.forEach(x=>{if(b.has(x))i++;}); const u=new Set([...a,...b]).size; return u?i/u:0; }
+function autoMatchSrc(src){
+  const g=GCAT[src]||{}, cats=ourCats(src).map(c=>({key:c.key,cat:c.cat,set:normSet(c.cat)}));
+  const patch={};
+  for(const gk in g){
+    if((MAP[src]||{})[gk]) continue;              // вже привʼязані не чіпаємо
+    const gset=normSet(g[gk].name||gk); let best=null,bs=0;
+    for(const c of cats){ const s=jac(gset,c.set); if(s>bs){bs=s;best=c;} }
+    if(best&&bs>=0.34) patch[gk]=best.key;
+  }
+  return patch;
+}
+async function autoMatchAll(){
+  let n=0;
+  for(const src of sources()){
+    const patch=autoMatchSrc(src);
+    const keys=Object.keys(patch); if(!keys.length) continue;
+    MAP[src]=Object.assign(MAP[src]||{},patch); n+=keys.length;
+    try{ await fetch(FB+"/shop-reports/ads-mapcat/"+enc(src)+".json",
+      {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});}catch(e){}
+  }
+  el("status").textContent="Авто-підбір: привʼязано "+n+" (перевір і поправ за потреби)";
+  render();
 }
 
 async function saveMap(src,gk,catKey){
