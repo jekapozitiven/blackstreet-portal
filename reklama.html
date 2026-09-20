@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>BBB CLUB // Реклама</title>
 <style>
   :root{
@@ -39,8 +42,9 @@
   td.name.exp{cursor:pointer;user-select:none} td.name.exp:hover{color:var(--accent)}
   .caret{display:inline-block;width:12px;color:var(--muted);font-size:11px;transition:transform .12s}
   tr.open .caret{transform:rotate(90deg);color:var(--accent)}
-  tr.camp td{background:#1b2028;font-weight:700;border-top:2px solid var(--line)}
-  tr.camp td.name{color:var(--text)}
+  tr.camp{cursor:pointer} tr.camp td{background:#1b2028;font-weight:700;border-top:2px solid var(--line)}
+  tr.camp:hover td{background:#20262f}
+  tr.camp td.name{color:var(--text);user-select:none}
   td.name.sub{padding-left:28px}
   tr.detail td{background:#12151a;border-top:0;padding:2px 12px 10px}
   .arts{display:flex;flex-wrap:wrap;gap:6px;white-space:normal}
@@ -198,10 +202,11 @@ function renderTable(f,t){
         gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.margin+=r.margin;gr.budget+=r.budget;gr.upsSum+=r.upsSum;
       }
       const gArr=Object.values(groups).sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
-      body="";
+      body=""; let ci=0;
       for(const gr of gArr){
+        const cuid="c"+(ci++);
         gr.rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
-        body+=campHtml(gr)+gr.rows.map(r=>rowHtml(r,false,src,true)).join("");
+        body+=campHtml(gr,cuid)+gr.rows.map(r=>rowHtml(r,false,src,true,cuid)).join("");
       }
       if(hasUnmapped) body+=rowHtml(unmapped,false,src,false);
       body+=totRow;
@@ -227,6 +232,23 @@ function renderTable(f,t){
     <div class="kpi"><div class="l">Чистими</div><div class="v ${gnet>=0?'g':'r'}">${fmt(gnet)} ₴</div></div>`;
   el("shops").innerHTML=html||"<div class='note'>Немає даних.</div>";
   attachExpand();
+  attachCampToggle();
+}
+function attachCampToggle(){
+  el("shops").querySelectorAll('tr.camp').forEach(tr=>{
+    tr.onclick=()=>{
+      const cuid=tr.dataset.cuid; if(!cuid)return;
+      const open=!tr.classList.contains('open');
+      tr.classList.toggle('open',open);
+      el("shops").querySelectorAll('tr[data-camp="'+cuid+'"]').forEach(row=>{
+        if(row.classList.contains('detail')){ row.style.display='none'; }  // артикули завжди згорнуті при перемиканні
+        else {
+          row.style.display=open?'':'none';
+          if(!open) row.classList.remove('open');   // скидаємо розкриті категорії
+        }
+      });
+    };
+  });
 }
 
 function cellsHtml(r){
@@ -240,24 +262,27 @@ function cellsHtml(r){
     <td class="${r.net>=0?'g':'r'}">${r.budget?fmt(r.net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
-function campHtml(gr){
+function campHtml(gr,cuid){
   const apr=gr.leads?Math.round(gr.approved/gr.leads*100):0;
   const net=gr.margin-gr.budget;
-  return `<tr class="camp"><td class="name">${gr.camp}</td>
+  const n=gr.rows.length;
+  return `<tr class="camp" data-cuid="${cuid}"><td class="name"><span class="caret">▸</span>${gr.camp} <span class="pct" style="font-weight:400">· ${n} катег.</span></td>
     <td>${fmt(gr.leads)}</td><td>${fmt(gr.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(gr.margin)}</td><td>${gr.budget?fmt(gr.budget):"—"}</td><td>—</td><td>—</td>
     <td class="${net>=0?'g':'r'}">${gr.budget?fmt(net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
 }
-function rowHtml(r,isTot,src,sub){
+function rowHtml(r,isTot,src,sub,campId){
   if(isTot) return `<tr class="tot"><td class="name">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const cls=(r.key==="_noads")?"nocat":"";
   const sc=sub?" sub":"";
+  const dc=campId?` data-camp="${campId}"`:"";
+  const hid=campId?' style="display:none"':"";
   const arts=mergeArticles(src,r.wkeys||[]);
-  if(!arts.length) return `<tr class="${cls}"><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
+  if(!arts.length) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const uid="r"+(ROWUID++); ROWART[uid]=arts;
-  const main=`<tr class="${cls}"><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
+  const main=`<tr class="${cls}"${dc}${hid}><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
   const chips=arts.map(([sku,c])=>`<span class="chip">${sku}<b>×${c}</b></span>`).join("");
-  const detail=`<tr class="detail" id="det-${uid}" style="display:none"><td colspan="9">
+  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="9">
     <div class="arts">${chips}</div>
     <div class="note" style="margin:6px 0 0">${arts.length} артикул(ів) у цій категорії</div></td></tr>`;
   return main+detail;
