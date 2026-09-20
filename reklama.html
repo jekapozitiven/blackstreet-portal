@@ -142,7 +142,14 @@ function render(){
 
 function mergeArticles(src,keys){
   const acc={}, a=(ARTS[src]||{});
-  for(const k of keys){ const d=a[k]||{}; for(const sku in d){ acc[sku]=(acc[sku]||0)+(+d[sku]||0); } }
+  for(const k of keys){ const d=a[k]; if(!d) continue;
+    // формат — список пар [артикул,кількість]; підтримуємо і старий словник
+    const items = Array.isArray(d) ? d : Object.values(d);
+    for(const pr of items){
+      if(Array.isArray(pr)){ const sku=pr[0], c=+pr[1]||0; if(sku) acc[sku]=(acc[sku]||0)+c; }
+      else if(pr && typeof pr==="object"){ const sku=pr[0]||pr.sku; if(sku) acc[sku]=(acc[sku]||0)+(+pr[1]||+pr.n||0); }
+    }
+  }
   return Object.entries(acc).sort((x,y)=>y[1]-x[1]);
 }
 function renderTable(f,t){
