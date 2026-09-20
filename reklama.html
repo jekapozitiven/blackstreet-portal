@@ -178,8 +178,8 @@ function renderTable(f,t){
       const dst=(tgt&&byAdv[tgt])?byAdv[tgt]:unmapped;
       dst.leads+=o.leads;dst.approved+=o.approved;dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(ck);
     }
-    let rows=Object.values(byAdv).map(r=>({...r,cpl:r.leads?r.budget/r.leads:0,cpa:r.approved?r.budget/r.approved:0,net:r.margin-r.budget}));
-    if(unmapped.leads||unmapped.margin){ unmapped.cpl=0;unmapped.cpa=0;unmapped.net=unmapped.margin; }
+    let rows=Object.values(byAdv).map(r=>({...r,net:r.margin-r.budget}));
+    if(unmapped.leads||unmapped.margin){ unmapped.net=unmapped.margin; }
     const hasUnmapped=unmapped.leads||unmapped.margin;
 
     const allR=rows.concat(hasUnmapped?[unmapped]:[]);
@@ -187,7 +187,7 @@ function renderTable(f,t){
       {leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0});
     grand.leads+=tot.leads;grand.approved+=tot.approved;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
     const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
-    const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,cpl:tot.leads?tot.budget/tot.leads:0,cpa:tot.approved?tot.budget/tot.approved:0,net:tot.margin-tot.budget,upsSum:tot.upsSum},true);
+    const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,sum:tot.sum,net:tot.margin-tot.budget,upsSum:tot.upsSum},true);
 
     const grouped = Object.keys(cc).length>0;
     let body;
@@ -198,8 +198,8 @@ function renderTable(f,t){
       const groups={};
       for(const r of rows){
         const camp=(cc[r.key]&&cc[r.key].camp)||"Без кампанії";
-        const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,margin:0,budget:0,upsSum:0});
-        gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.margin+=r.margin;gr.budget+=r.budget;gr.upsSum+=r.upsSum;
+        const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,margin:0,budget:0,sum:0,upsSum:0});
+        gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum;
       }
       const gArr=Object.values(groups).sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
       body=""; let ci=0;
@@ -219,7 +219,7 @@ function renderTable(f,t){
         <span class="t">заявок ${fmt(tot.leads)} · апрув ${fmt(tot.approved)} (${tpct}%) · маржа ${fmt(tot.margin)} · бюджет ${fmt(tot.budget)} ₴</span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
-        <th>Бюджет ₴</th><th>CPL</th><th>CPA</th><th>Чистими ₴</th><th>Допрод ₴</th>
+        <th>Бюджет ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
       </tr></thead><tbody>${body}</tbody></table></div>`;
   }
   const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
@@ -253,22 +253,28 @@ function attachCampToggle(){
 
 function cellsHtml(r){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
+  const roas=r.budget?(r.sum||0)/r.budget:0;
+  const roi=r.budget?(r.margin-r.budget)/r.budget:0;
   return `<td>${fmt(r.leads)}</td>
     <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(r.margin)}</td>
     <td>${r.budget?fmt(r.budget):"—"}</td>
-    <td>${r.budget?fmt(r.cpl):"—"}</td>
-    <td>${r.budget&&r.approved?fmt(r.cpa):"—"}</td>
+    <td class="${roas>=1?'g':'r'}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
+    <td class="${roi>=0?'g':'r'}">${r.budget?Math.round(roi*100)+'%':"—"}</td>
     <td class="${r.net>=0?'g':'r'}">${r.budget?fmt(r.net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
 function campHtml(gr,cuid){
   const apr=gr.leads?Math.round(gr.approved/gr.leads*100):0;
   const net=gr.margin-gr.budget;
+  const roas=gr.budget?(gr.sum||0)/gr.budget:0;
+  const roi=gr.budget?(gr.margin-gr.budget)/gr.budget:0;
   const n=gr.rows.length;
   return `<tr class="camp" data-cuid="${cuid}"><td class="name"><span class="caret">▸</span>${gr.camp} <span class="pct" style="font-weight:400">· ${n} катег.</span></td>
     <td>${fmt(gr.leads)}</td><td>${fmt(gr.approved)} <span class="pct">${apr}%</span></td>
-    <td>${fmt(gr.margin)}</td><td>${gr.budget?fmt(gr.budget):"—"}</td><td>—</td><td>—</td>
+    <td>${fmt(gr.margin)}</td><td>${gr.budget?fmt(gr.budget):"—"}</td>
+    <td class="${roas>=1?'g':'r'}">${gr.budget?roas.toFixed(2)+'×':"—"}</td>
+    <td class="${roi>=0?'g':'r'}">${gr.budget?Math.round(roi*100)+'%':"—"}</td>
     <td class="${net>=0?'g':'r'}">${gr.budget?fmt(net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
 }
 function rowHtml(r,isTot,src,sub,campId){
@@ -302,7 +308,8 @@ function renderMap(f,t){
   el("kpis").innerHTML="";
   const srcs=sources();
   let html=`<div style="margin:0 2px 12px"><button id="autoBtn">✨ Авто-підбір</button>
-    <span class="note" style="margin-left:8px">сам зіставить наші категорії замовлень з рекламованими Google-категоріями; порожні/невірні поправ вручну</span></div>`;
+    <button class="ghost" id="autoAllBtn" style="margin-left:8px">🔄 Переприв'язати все</button>
+    <span class="note" style="margin-left:8px">«Авто-підбір» — заповнює лише порожні; «Переприв'язати все» — переразкладає всі заново (перезапис)</span></div>`;
   for(const src of srcs){
     const adv=advCats(src), m=(MAP[src]||{});
     const orders=aggCats(src,null,null);   // всі наші категорії за весь час — зліва
@@ -325,7 +332,8 @@ function renderMap(f,t){
     html+=`</div>`;
   }
   el("mapView").innerHTML=html;
-  const ab=el("autoBtn"); if(ab) ab.onclick=autoMatchAll;
+  const ab=el("autoBtn"); if(ab) ab.onclick=()=>autoMatchAll(false);
+  const aab=el("autoAllBtn"); if(aab) aab.onclick=()=>autoMatchAll(true);
   el("mapView").querySelectorAll("select").forEach(sel=>{
     const src=sel.dataset.src, ok=sel.dataset.ok;
     sel.value=(MAP[src]||{})[ok]||"";
@@ -335,6 +343,8 @@ function renderMap(f,t){
 
 // ---- авто-підбір: наша категорія замовлення -> рекламована Google-категорія (корені слів, рус/укр) ----
 const STEM=[
+  ["мужск|мужчин|чолович","муж"],       // рід — важливий: відрізняє "зимние куртки" від "мужские зимние куртки"
+  ["женск|жиноч","жен"],
   ["кофт|толстовк|реглан|худ|свитшот|свитер|кардиган","кофта"],
   ["зим","зима"],["утепл","утепл"],["костюм","костюм"],
   ["бомбер","бомбер"],["анорак","анорак"],["ветров|витров","витров"],
@@ -345,37 +355,37 @@ const STEM=[
   ["кроссовк|кросивк|кросовк|кед","кросивка"],["ботинк|черевик","черевик"],
   ["набор|набир","набор"],["шорт","шорт"],["рубашк|сороч","сорочка"],["кепк","кепка"],["панамк","панамка"],
   ["носк|шкарпет","шкарпетка"],["дитяч|детск","дитяч"],["одежд|одяг|взутт|обув","одяг"],
-  ["плат","плаття"],["пижам","пижама"],["жиноч|женск","жин"]
+  ["плат","плаття"],["пижам","пижама"]
 ];
 function canon(tok){ for(let i=0;i<STEM.length;i++){ if(new RegExp(STEM[i][0]).test(tok)) return STEM[i][1]; } return tok; }
 function normSet(s){
   s=(s||"").toLowerCase().replace(/[іїʼ'’]/g,"и").replace(/є/g,"е").replace(/ґ/g,"г");
-  const stop=new Set(["мужские","мужская","мужской","мужчин","чоловичи","чоловича","чоловичий","и","та","для"]);
+  const stop=new Set(["и","та","для","з","на"]);   // рід НЕ викидаємо — він значущий
   return new Set(s.split(/[\s|\/_,\-–—+()]+/).filter(Boolean).filter(t=>!stop.has(t)).map(canon));
 }
 function jac(a,b){ let i=0; a.forEach(x=>{if(b.has(x))i++;}); const u=new Set([...a,...b]).size; return u?i/u:0; }
-function autoMatchSrc(src){
+function autoMatchSrc(src,overwrite){
   const adv=advCats(src).map(a=>({key:a.key,set:normSet(a.name)}));
   const orders=aggCats(src,null,null);
   const patch={};
   for(const ck in orders){
-    if((MAP[src]||{})[ck]) continue;               // вже привʼязані не чіпаємо
+    if(!overwrite && (MAP[src]||{})[ck]) continue;   // без перезапису — вже привʼязані не чіпаємо
     const oset=normSet(orders[ck].cat); let best=null,bs=0;
     for(const a of adv){ const s=jac(oset,a.set); if(s>bs){bs=s;best=a;} }
     if(best&&bs>=0.34) patch[ck]=best.key;
   }
   return patch;
 }
-async function autoMatchAll(){
+async function autoMatchAll(overwrite){
   let n=0;
   for(const src of sources()){
-    const patch=autoMatchSrc(src);
+    const patch=autoMatchSrc(src,overwrite);
     const keys=Object.keys(patch); if(!keys.length) continue;
     MAP[src]=Object.assign(MAP[src]||{},patch); n+=keys.length;
     try{ await fetch(FB+"/shop-reports/ads-map2/"+enc(src)+".json",
       {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});}catch(e){}
   }
-  el("status").textContent="Авто-підбір: привʼязано "+n+" (перевір і поправ за потреби)";
+  el("status").textContent=(overwrite?"Переприв'язано заново: ":"Авто-підбір: привʼязано ")+n+" (перевір і поправ за потреби)";
   render();
 }
 
