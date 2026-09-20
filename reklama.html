@@ -39,6 +39,9 @@
   td.name.exp{cursor:pointer;user-select:none} td.name.exp:hover{color:var(--accent)}
   .caret{display:inline-block;width:12px;color:var(--muted);font-size:11px;transition:transform .12s}
   tr.open .caret{transform:rotate(90deg);color:var(--accent)}
+  tr.camp td{background:#1b2028;font-weight:700;border-top:2px solid var(--line)}
+  tr.camp td.name{color:var(--text)}
+  td.name.sub{padding-left:28px}
   tr.detail td{background:#12151a;border-top:0;padding:2px 12px 10px}
   .arts{display:flex;flex-wrap:wrap;gap:6px;white-space:normal}
   .chip{background:#0f1216;border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-family:var(--mono);font-size:12px}
@@ -82,7 +85,8 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
 // GCAT[src][gKey]={name,"дата":витрати}                               — рекламовані категорії Google + бюджет
 // MAP[src][workerCatKey]=gKey                                          — наша категорія замовлення -> рекламована категорія Google
 // ARTS[src][workerCatKey]={артикул:кількість}                         — артикули по категорії (для розкриття рядка)
-let ADS = {}, GCAT = {}, MAP = {}, ARTS = {};
+// GCATCAMP[src][gKey]={cat,camp,lastDate}                              — поточна кампанія категорії (авто з Google Ads)
+let ADS = {}, GCAT = {}, MAP = {}, ARTS = {}, GCATCAMP = {};
 let ROWART = {}, ROWUID = 0;   // uid рядка -> [[артикул,кількість]...] для розкриття
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
@@ -91,13 +95,14 @@ const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,ar] = await Promise.all([
+  const [a,g,m,ar,cc] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-articles.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-google-catcamp.json").then(r=>r.json()),
   ]);
-  ADS=a||{}; GCAT=g||{}; MAP=m||{}; ARTS=ar||{};
+  ADS=a||{}; GCAT=g||{}; MAP=m||{}; ARTS=ar||{}; GCATCAMP=cc||{};
   const [mn,mx]=bounds();
   if(mn&&!el("from").value) el("from").value=mn;
   if(mx&&!el("to").value) el("to").value=mx;
@@ -158,7 +163,7 @@ function renderTable(f,t){
   ROWART={}; ROWUID=0;
   let html="";
   for(const src of srcs){
-    const adv=advCats(src), g=(GCAT[src]||{}), m=(MAP[src]||{});
+    const adv=advCats(src), g=(GCAT[src]||{}), m=(MAP[src]||{}), cc=(GCATCAMP[src]||{});
     const orders=aggCats(src,f,t);
     // база рядків = рекламовані Google-категорії
     const byAdv={};
@@ -170,17 +175,41 @@ function renderTable(f,t){
       dst.leads+=o.leads;dst.approved+=o.approved;dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(ck);
     }
     let rows=Object.values(byAdv).map(r=>({...r,cpl:r.leads?r.budget/r.leads:0,cpa:r.approved?r.budget/r.approved:0,net:r.margin-r.budget}));
-    rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
-    if(unmapped.leads||unmapped.margin){ unmapped.cpl=0;unmapped.cpa=0;unmapped.net=unmapped.margin; rows.push(unmapped); }
+    if(unmapped.leads||unmapped.margin){ unmapped.cpl=0;unmapped.cpa=0;unmapped.net=unmapped.margin; }
+    const hasUnmapped=unmapped.leads||unmapped.margin;
 
-    const tot=rows.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
+    const allR=rows.concat(hasUnmapped?[unmapped]:[]);
+    const tot=allR.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
       {leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0});
     grand.leads+=tot.leads;grand.approved+=tot.approved;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
     const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
-    const body = adv.length
-      ? rows.map(r=>rowHtml(r,false,src)).join("")+
-        rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,cpl:tot.leads?tot.budget/tot.leads:0,cpa:tot.approved?tot.budget/tot.approved:0,net:tot.margin-tot.budget,upsSum:tot.upsSum},true)
-      : `<tr><td class="empty" colspan="9">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
+    const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,cpl:tot.leads?tot.budget/tot.leads:0,cpa:tot.approved?tot.budget/tot.approved:0,net:tot.margin-tot.budget,upsSum:tot.upsSum},true);
+
+    const grouped = Object.keys(cc).length>0;
+    let body;
+    if(!adv.length){
+      body=`<tr><td class="empty" colspan="9">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
+    } else if(grouped){
+      // групуємо категорії за ПОТОЧНОЮ кампанією (з ads-google-catcamp)
+      const groups={};
+      for(const r of rows){
+        const camp=(cc[r.key]&&cc[r.key].camp)||"Без кампанії";
+        const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,margin:0,budget:0,upsSum:0});
+        gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.margin+=r.margin;gr.budget+=r.budget;gr.upsSum+=r.upsSum;
+      }
+      const gArr=Object.values(groups).sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
+      body="";
+      for(const gr of gArr){
+        gr.rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
+        body+=campHtml(gr)+gr.rows.map(r=>rowHtml(r,false,src,true)).join("");
+      }
+      if(hasUnmapped) body+=rowHtml(unmapped,false,src,false);
+      body+=totRow;
+    } else {
+      rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
+      if(hasUnmapped) rows.push(unmapped);
+      body=rows.map(r=>rowHtml(r,false,src)).join("")+totRow;
+    }
     html+=`<div class="shop"><h2>${src}
         <span class="t">заявок ${fmt(tot.leads)} · апрув ${fmt(tot.approved)} (${tpct}%) · маржа ${fmt(tot.margin)} · бюджет ${fmt(tot.budget)} ₴</span></h2>
       <table><thead><tr>
@@ -211,13 +240,22 @@ function cellsHtml(r){
     <td class="${r.net>=0?'g':'r'}">${r.budget?fmt(r.net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
-function rowHtml(r,isTot,src){
+function campHtml(gr){
+  const apr=gr.leads?Math.round(gr.approved/gr.leads*100):0;
+  const net=gr.margin-gr.budget;
+  return `<tr class="camp"><td class="name">${gr.camp}</td>
+    <td>${fmt(gr.leads)}</td><td>${fmt(gr.approved)} <span class="pct">${apr}%</span></td>
+    <td>${fmt(gr.margin)}</td><td>${gr.budget?fmt(gr.budget):"—"}</td><td>—</td><td>—</td>
+    <td class="${net>=0?'g':'r'}">${gr.budget?fmt(net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
+}
+function rowHtml(r,isTot,src,sub){
   if(isTot) return `<tr class="tot"><td class="name">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const cls=(r.key==="_noads")?"nocat":"";
+  const sc=sub?" sub":"";
   const arts=mergeArticles(src,r.wkeys||[]);
-  if(!arts.length) return `<tr class="${cls}"><td class="name">${r.cat}</td>${cellsHtml(r)}</tr>`;
+  if(!arts.length) return `<tr class="${cls}"><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const uid="r"+(ROWUID++); ROWART[uid]=arts;
-  const main=`<tr class="${cls}"><td class="name exp" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
+  const main=`<tr class="${cls}"><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
   const chips=arts.map(([sku,c])=>`<span class="chip">${sku}<b>×${c}</b></span>`).join("");
   const detail=`<tr class="detail" id="det-${uid}" style="display:none"><td colspan="9">
     <div class="arts">${chips}</div>
