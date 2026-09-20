@@ -165,6 +165,7 @@ function renderTable(f,t){
   const srcs=sources();
   const grand={leads:0,approved:0,margin:0,budget:0,ups:0};
   ROWART={}; ROWUID=0;
+  let cuidN=0;                 // наскрізний лічильник кампаній (унікальний між магазинами)
   let html="";
   for(const src of srcs){
     const adv=advCats(src), g=(GCAT[src]||{}), m=(MAP[src]||{}), cc=(GCATCAMP[src]||{});
@@ -194,17 +195,21 @@ function renderTable(f,t){
     if(!adv.length){
       body=`<tr><td class="empty" colspan="9">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
     } else if(grouped){
+      // кампанія-каталог «Все Товари» — в неї кладемо категорії без явної кампанії
+      const campVals=Object.values(cc).map(x=>x&&x.camp).filter(Boolean);
+      const catchAll=campVals.find(n=>{const z=n.toLowerCase();
+        return z.indexOf("товар")>=0 && (z.indexOf("все")>=0||z.indexOf("всі")>=0||z.indexOf("all")>=0);})||null;
       // групуємо категорії за ПОТОЧНОЮ кампанією (з ads-google-catcamp)
       const groups={};
       for(const r of rows){
-        const camp=(cc[r.key]&&cc[r.key].camp)||"Без кампанії";
+        const camp=(cc[r.key]&&cc[r.key].camp)||catchAll||"Без кампанії";
         const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,margin:0,budget:0,sum:0,upsSum:0});
         gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum;
       }
       const gArr=Object.values(groups).sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
-      body=""; let ci=0;
+      body="";
       for(const gr of gArr){
-        const cuid="c"+(ci++);
+        const cuid="c"+(cuidN++);
         gr.rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
         body+=campHtml(gr,cuid)+gr.rows.map(r=>rowHtml(r,false,src,true,cuid)).join("");
       }
