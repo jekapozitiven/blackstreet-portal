@@ -32,19 +32,20 @@
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-top:0}
   td.name,th.name{text-align:left;font-family:inherit;white-space:normal}
   tr.tot td{border-top:2px solid var(--line);font-weight:700}
-  tr.mixed td.name{color:var(--orange)} tr.nocat td.name{color:var(--muted)}
+  tr.nocat td.name{color:var(--orange)}
   tr.warn td{color:var(--orange)}
   .pct{color:var(--muted)} .g{color:var(--green)} .r{color:var(--red)}
   .note{color:var(--muted);font-size:12px;margin:8px 2px}
   .maprow{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line)}
-  .maprow .gname{flex:1;font-size:13px} .maprow .gb{font-family:var(--mono);color:var(--muted);width:90px;text-align:right}
+  .maprow .gname{flex:1;font-size:13px} .maprow .gb{font-family:var(--mono);color:var(--muted);width:120px;text-align:right}
+  .empty{color:var(--muted);font-size:12px;padding:8px 12px}
   @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Реклама — категорії та бюджет</h1>
-  <div class="sub">Заявки/маржа з сайтів (Google-трафік) + витрати з Google Ads по типах товару. Прив'язка Google-тип → категорія робиться раз у вкладці «Прив'язка».</div>
+  <div class="sub">Категорії = ті, що реально рекламуються в Google Ads (типи товару в кампаніях, по кожному магазину). Заявки/маржа з сайтів привʼязуються до них у вкладці «Прив'язка».</div>
 
   <div class="bar">
     <label>Від<input type="date" id="from"></label>
@@ -69,24 +70,24 @@
 
 <script>
 const FB = "https://owner-portal-1649e-default-rtdb.europe-west1.firebasedatabase.app";
-const MIXED = "__потребує_розподілу__", NOCAT = "_no_cat";
 const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
-let ADS = {}, GCAT = {}, MAP = {}, CATLIST = [];
+// ADS[src][day][workerCatKey]={cat,leads,approved,sum,margin,upsSum}  — наші замовлення по категоріях воркера
+// GCAT[src][gKey]={name,"дата":витрати}                               — рекламовані категорії Google + бюджет
+// MAP[src][workerCatKey]=gKey                                          — наша категорія замовлення -> рекламована категорія Google
+let ADS = {}, GCAT = {}, MAP = {};
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
 const el = id => document.getElementById(id);
 const enc = encodeURIComponent;
-const fbkey = s => (String(s==null?"":s).replace(/[.$#/\[\]]/g,"_").trim())||"_";
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,cl] = await Promise.all([
+  const [a,g,m] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
-    fetch(FB+"/shop-reports/ads-mapcat.json").then(r=>r.json()),
-    fetch(FB+"/shop-reports/ads-catlist.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
   ]);
-  ADS=a||{}; GCAT=g||{}; MAP=m||{}; CATLIST=cl||{};
+  ADS=a||{}; GCAT=g||{}; MAP=m||{};
   const [mn,mx]=bounds();
   if(mn&&!el("from").value) el("from").value=mn;
   if(mx&&!el("to").value) el("to").value=mx;
@@ -96,6 +97,7 @@ async function loadData(){
 function bounds(){
   let mn=null,mx=null;
   for(const s in ADS) for(const d in ADS[s]){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
+  for(const s in GCAT) for(const k in GCAT[s]) for(const d in GCAT[s][k]){ if(d==="name")continue; if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
   return [mn,mx];
 }
 function sources(){
@@ -103,13 +105,16 @@ function sources(){
   return [...s].sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return (ia<0?9:ia)-(ib<0?9:ib);});
 }
 function inRange(d,f,t){ return (!f||d>=f)&&(!t||d<=t); }
-
-// сумма витрат Google-типу за період
 function sumCost(obj,f,t){ let s=0; for(const k in obj){ if(k==="name")continue; if(inRange(k,f,t)) s+=+obj[k]||0; } return s; }
 
-// агрегати наших категорій за період: catKey -> {cat,leads,approved,sum,margin,upsSum}
+// рекламовані категорії магазину (з Google Ads) — тільки вони, окремо по магазину
+function advCats(src){
+  const g=GCAT[src]||{};
+  return Object.keys(g).map(k=>({key:k,name:g[k].name||k})).sort((a,b)=>a.name.localeCompare(b.name,"uk"));
+}
+// наші категорії замовлень за період: workerKey -> {key,cat,leads,approved,sum,margin,upsSum}
 function aggCats(src,f,t){
-  const out={}; const days=(ADS[src]||{});
+  const out={}, days=(ADS[src]||{});
   for(const day in days){ if(!inRange(day,f,t))continue;
     for(const ck in days[day]){ const c=days[day][ck];
       const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sum:0,margin:0,upsSum:0});
@@ -117,24 +122,6 @@ function aggCats(src,f,t){
     }}
   return out;
 }
-// бюджет по нашим категоріям (сума прив'язаних Google-типів) + непривʼязаний
-function budgetByCat(src,f,t){
-  const by={}, m=(MAP[src]||{}), g=(GCAT[src]||{}); let unmapped=0, total=0;
-  for(const gk in g){ const b=sumCost(g[gk],f,t); total+=b;
-    const catKey=m[gk];
-    if(catKey) by[catKey]=(by[catKey]||0)+b; else unmapped+=b;
-  }
-  return {by,unmapped,total};
-}
-// ВСІ наші категорії (обʼєднання по всіх магазинах) — для випадайок і авто-підбору
-// категорії КОНКРЕТНОГО магазину: із замовлень + майстер-список каталогу цього магазину
-function catsForShop(src){
-  const seen={}, days=ADS[src]||{};
-  for(const d in days) for(const ck in days[d]){ if(!seen[ck]) seen[ck]={key:ck,cat:days[d][ck].cat||ck}; }
-  for(const name of (CATLIST[src]||[])){ const k=fbkey(name); if(!seen[k]) seen[k]={key:k,cat:name}; }
-  return Object.values(seen).sort((a,b)=>a.cat.localeCompare(b.cat,"uk"));
-}
-function catNamesForShop(src){ const m={}; catsForShop(src).forEach(c=>m[c.key]=c.cat); return m; }
 
 function render(){
   const f=el("from").value, t=el("to").value;
@@ -148,31 +135,35 @@ function renderTable(f,t){
   const grand={leads:0,approved:0,margin:0,budget:0,ups:0};
   let html="";
   for(const src of srcs){
-    const cats=aggCats(src,f,t); const {by,unmapped,total}=budgetByCat(src,f,t);
-    const names=catNamesForShop(src);
-    const rows=Object.values(cats).map(c=>{
-      const budget=by[c.key]||0;
-      return {...c, budget, cpl:c.leads?budget/c.leads:0, cpa:c.approved?budget/c.approved:0, net:c.margin-budget};
-    });
-    // категорії з бюджетом, але без заявок за період — теж показуємо
-    for(const ck in by){ if(!cats[ck]){ const b=by[ck];
-      rows.push({key:ck,cat:names[ck]||ck,leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:b,cpl:0,cpa:0,net:-b}); } }
-    rows.sort((a,b)=>b.leads-a.leads||b.budget-a.budget);
+    const adv=advCats(src), g=(GCAT[src]||{}), m=(MAP[src]||{});
+    const orders=aggCats(src,f,t);
+    // база рядків = рекламовані Google-категорії
+    const byAdv={};
+    for(const a of adv){ byAdv[a.key]={key:a.key,cat:a.name,leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:sumCost(g[a.key],f,t)}; }
+    // розкидати наші замовлення по рекламованих категоріях
+    const unmapped={key:"_noads",cat:"Замовлення без реклами",leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0};
+    for(const ck in orders){ const o=orders[ck]; const tgt=m[ck];
+      const dst=(tgt&&byAdv[tgt])?byAdv[tgt]:unmapped;
+      dst.leads+=o.leads;dst.approved+=o.approved;dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;
+    }
+    let rows=Object.values(byAdv).map(r=>({...r,cpl:r.leads?r.budget/r.leads:0,cpa:r.approved?r.budget/r.approved:0,net:r.margin-r.budget}));
+    rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
+    if(unmapped.leads||unmapped.margin){ unmapped.cpl=0;unmapped.cpa=0;unmapped.net=unmapped.margin; rows.push(unmapped); }
+
     const tot=rows.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
       {leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0});
-    tot.budget = total; // весь бюджет магазину (враховуючи непривʼязаний)
-    grand.leads+=tot.leads;grand.approved+=tot.approved;grand.margin+=tot.margin;grand.budget+=total;grand.ups+=tot.upsSum;
+    grand.leads+=tot.leads;grand.approved+=tot.approved;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
     const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
+    const body = adv.length
+      ? rows.map(r=>rowHtml(r)).join("")+
+        rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,cpl:tot.leads?tot.budget/tot.leads:0,cpa:tot.approved?tot.budget/tot.approved:0,net:tot.margin-tot.budget,upsSum:tot.upsSum},true)
+      : `<tr><td class="empty" colspan="9">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
     html+=`<div class="shop"><h2>${src}
-        <span class="t">заявок ${fmt(tot.leads)} · апрув ${fmt(tot.approved)} (${tpct}%) · маржа ${fmt(tot.margin)} · бюджет ${fmt(total)} ₴</span></h2>
+        <span class="t">заявок ${fmt(tot.leads)} · апрув ${fmt(tot.approved)} (${tpct}%) · маржа ${fmt(tot.margin)} · бюджет ${fmt(tot.budget)} ₴</span></h2>
       <table><thead><tr>
-        <th class="name">Категорія</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
+        <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
         <th>Бюджет ₴</th><th>CPL</th><th>CPA</th><th>Чистими ₴</th><th>Допрод ₴</th>
-      </tr></thead><tbody>
-        ${rows.map(r=>rowHtml(r)).join("")}
-        ${unmapped>0?`<tr class="warn"><td class="name">Бюджет без прив'язки</td><td>—</td><td>—</td><td>—</td><td>${fmt(unmapped)}</td><td>—</td><td>—</td><td class="r">-${fmt(unmapped)}</td><td>—</td></tr>`:""}
-        ${rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,cpl:tot.leads?tot.budget/tot.leads:0,cpa:tot.approved?tot.budget/tot.approved:0,net:tot.margin-tot.budget,upsSum:tot.upsSum},true)}
-      </tbody></table></div>`;
+      </tr></thead><tbody>${body}</tbody></table></div>`;
   }
   const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
   const gnet=grand.margin-grand.budget;
@@ -187,7 +178,7 @@ function renderTable(f,t){
 
 function rowHtml(r,isTot){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
-  const cls=isTot?"tot":(r.key===MIXED?"mixed":(r.key===NOCAT?"nocat":""));
+  const cls=isTot?"tot":(r.key==="_noads"?"nocat":"");
   return `<tr class="${cls}">
     <td class="name">${r.cat}</td>
     <td>${fmt(r.leads)}</td>
@@ -205,35 +196,38 @@ function renderMap(f,t){
   el("kpis").innerHTML="";
   const srcs=sources();
   let html=`<div style="margin:0 2px 12px"><button id="autoBtn">✨ Авто-підбір</button>
-    <span class="note" style="margin-left:8px">сам зіставить Google-підтипи з категоріями; порожні/невірні поправ вручну</span></div>`;
+    <span class="note" style="margin-left:8px">сам зіставить наші категорії замовлень з рекламованими Google-категоріями; порожні/невірні поправ вручну</span></div>`;
   for(const src of srcs){
-    const g=(GCAT[src]||{}); const m=(MAP[src]||{}); const cats=catsForShop(src);
-    const gtypes=Object.keys(g).map(gk=>({key:gk,name:g[gk].name||gk,budget:sumCost(g[gk],f,t)})).sort((a,b)=>b.budget-a.budget);
-    const opts=cats.map(c=>`<option value="${c.key}">${c.cat}</option>`).join("");
-    html+=`<div class="shop"><h2>${src} <span class="t">прив'яжи Google-тип → наша категорія</span></h2>`;
-    for(const gt of gtypes){
-      const cur=m[gt.key]||"";
+    const adv=advCats(src), m=(MAP[src]||{});
+    const orders=aggCats(src,null,null);   // всі наші категорії за весь час — зліва
+    const ocs=Object.values(orders).sort((a,b)=>b.leads-a.leads);
+    const opts=adv.map(a=>`<option value="${a.key}">${a.name}</option>`).join("");
+    if(!adv.length){
+      html+=`<div class="shop"><h2>${src}</h2><div class="empty">Немає рекламованих категорій з Google Ads — додай скрипт у цей акаунт.</div></div>`;
+      continue;
+    }
+    html+=`<div class="shop"><h2>${src} <span class="t">наша категорія замовлення → рекламована категорія Google</span></h2>`;
+    if(!ocs.length) html+=`<div class="empty">Немає замовлень з сайту за весь період.</div>`;
+    for(const oc of ocs){
       html+=`<div class="maprow">
-        <div class="gname">${gt.name}</div>
-        <div class="gb">${fmt(gt.budget)} ₴</div>
-        <select data-src="${src}" data-gk="${gt.key}">
-          <option value="">— не привʼязано —</option>${opts}
+        <div class="gname">${oc.cat}</div>
+        <div class="gb">${fmt(oc.leads)} заяв.</div>
+        <select data-src="${src}" data-ok="${oc.key}">
+          <option value="">— не рекламується —</option>${opts}
         </select></div>`;
     }
     html+=`</div>`;
   }
   el("mapView").innerHTML=html;
   const ab=el("autoBtn"); if(ab) ab.onclick=autoMatchAll;
-  // проставити поточні значення + слухати зміни
   el("mapView").querySelectorAll("select").forEach(sel=>{
-    const src=sel.dataset.src, gk=sel.dataset.gk;
-    sel.value=(MAP[src]||{})[gk]||"";
-    sel.onchange=()=>saveMap(src,gk,sel.value);
+    const src=sel.dataset.src, ok=sel.dataset.ok;
+    sel.value=(MAP[src]||{})[ok]||"";
+    sel.onchange=()=>saveMap(src,ok,sel.value);
   });
 }
 
-// ---- авто-підбір Google-підтип -> наша категорія (по кореню слів, рус/укр) ----
-// вхід нормалізуємо: і/ї/'→и, є→е, ґ→г; далі корені у канонічну форму.
+// ---- авто-підбір: наша категорія замовлення -> рекламована Google-категорія (корені слів, рус/укр) ----
 const STEM=[
   ["кофт|толстовк|реглан|худ|свитшот|свитер|кардиган","кофта"],
   ["зим","зима"],["утепл","утепл"],["костюм","костюм"],
@@ -255,13 +249,14 @@ function normSet(s){
 }
 function jac(a,b){ let i=0; a.forEach(x=>{if(b.has(x))i++;}); const u=new Set([...a,...b]).size; return u?i/u:0; }
 function autoMatchSrc(src){
-  const g=GCAT[src]||{}, cats=catsForShop(src).map(c=>({key:c.key,cat:c.cat,set:normSet(c.cat)}));
+  const adv=advCats(src).map(a=>({key:a.key,set:normSet(a.name)}));
+  const orders=aggCats(src,null,null);
   const patch={};
-  for(const gk in g){
-    if((MAP[src]||{})[gk]) continue;              // вже привʼязані не чіпаємо
-    const gset=normSet(g[gk].name||gk); let best=null,bs=0;
-    for(const c of cats){ const s=jac(gset,c.set); if(s>bs){bs=s;best=c;} }
-    if(best&&bs>=0.34) patch[gk]=best.key;
+  for(const ck in orders){
+    if((MAP[src]||{})[ck]) continue;               // вже привʼязані не чіпаємо
+    const oset=normSet(orders[ck].cat); let best=null,bs=0;
+    for(const a of adv){ const s=jac(oset,a.set); if(s>bs){bs=s;best=a;} }
+    if(best&&bs>=0.34) patch[ck]=best.key;
   }
   return patch;
 }
@@ -271,19 +266,19 @@ async function autoMatchAll(){
     const patch=autoMatchSrc(src);
     const keys=Object.keys(patch); if(!keys.length) continue;
     MAP[src]=Object.assign(MAP[src]||{},patch); n+=keys.length;
-    try{ await fetch(FB+"/shop-reports/ads-mapcat/"+enc(src)+".json",
+    try{ await fetch(FB+"/shop-reports/ads-map2/"+enc(src)+".json",
       {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});}catch(e){}
   }
   el("status").textContent="Авто-підбір: привʼязано "+n+" (перевір і поправ за потреби)";
   render();
 }
 
-async function saveMap(src,gk,catKey){
-  MAP[src]=MAP[src]||{}; MAP[src][gk]=catKey||null;
+async function saveMap(src,ok,gKey){
+  MAP[src]=MAP[src]||{}; MAP[src][ok]=gKey||null;
   el("status").textContent="Збереження…";
   try{
-    await fetch(FB+"/shop-reports/ads-mapcat/"+enc(src)+".json",
-      {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({[gk]:catKey||null})});
+    await fetch(FB+"/shop-reports/ads-map2/"+enc(src)+".json",
+      {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({[ok]:gKey||null})});
     el("status").textContent="Збережено ✓ "+new Date().toLocaleTimeString("uk-UA");
   }catch(e){ el("status").textContent="Помилка збереження"; }
 }
