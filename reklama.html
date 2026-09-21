@@ -46,14 +46,18 @@
   tr.camp:hover td{background:#20262f}
   tr.camp td.name{color:var(--text);user-select:none}
   td.name.sub{padding-left:28px}
-  tr.detail td{background:#12151a;border-top:0;padding:2px 12px 10px}
-  .ocard{display:flex;gap:10px;align-items:center;padding:6px 4px;border-top:1px solid var(--line)}
+  tr.detail td{background:#12151a;border-top:0;padding:4px 12px 12px;text-align:left}
+  .ocard{display:flex;gap:12px;align-items:center;padding:8px 6px;border-top:1px solid var(--line);text-align:left}
   .ocard:first-child{border-top:0}
-  .oimg{width:44px;height:44px;border-radius:6px;object-fit:cover;background:#0f1216;flex:none}
-  .oimg.noimg{display:flex;align-items:center;justify-content:center;color:var(--muted);border:1px solid var(--line)}
-  .oinfo{min-width:0}
-  .oname{font-size:13px;white-space:normal;line-height:1.25} .oname a{color:var(--accent);text-decoration:none} .oname a:hover{text-decoration:underline}
-  .omet{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px;white-space:normal} .omet b{color:var(--text)}
+  .oimg{width:48px;height:48px;border-radius:8px;object-fit:cover;background:#0f1216;border:1px solid var(--line);flex:none}
+  .oimg.noimg{background:#0f1216}
+  .oinfo{min-width:0;flex:1}
+  .oname{font-size:13px;line-height:1.3;margin-bottom:4px}
+  .oname a{color:var(--accent);text-decoration:none} .oname a:hover{text-decoration:underline}
+  .omet{display:flex;flex-wrap:wrap;gap:3px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .omet b{color:var(--text);font-weight:600}
+  .omet .onum{color:var(--text)}
+  .omet .ap.g{color:var(--green)} .omet .ap.r{color:var(--red)}
   .maprow{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line)}
   .maprow .gname{flex:1;font-size:13px} .maprow .gb{font-family:var(--mono);color:var(--muted);width:120px;text-align:right}
   .empty{color:var(--muted);font-size:12px;padding:8px 12px}
@@ -311,12 +315,23 @@ function attachExpand(){
 }
 function cardHtml(o){
   const it=(o.items&&o.items[0])||{};
-  const img=it.img?`<img class="oimg" src="${it.img}" loading="lazy" onerror="this.style.visibility='hidden'">`:`<div class="oimg noimg">—</div>`;
-  const names=((o.items||[]).map(x=>{const nm=x.name||x.sku||"товар"; return x.href?`<a href="${x.href}" target="_blank" rel="noopener">${nm}</a>`:nm;}).join(", "))||(o.catName||"");
-  const ap=o.approved?`<span class="g">апрув ✓</span>`:`<span class="pct">не апрув</span>`;
+  const img=it.img?`<img class="oimg" src="${it.img}" loading="lazy" onerror="this.classList.add('noimg');this.removeAttribute('src')">`:`<div class="oimg noimg"></div>`;
+  const names=((o.items||[]).map(x=>{const nm=x.name||x.sku||"товар"; return x.href?`<a href="${x.href}" target="_blank" rel="noopener">${nm}</a>`:`<span>${nm}</span>`;}).join(", "))||(o.catName||"—");
+  const hasM=o.margin && o.margin>0;
+  const drop=hasM?fmt((o.sum||0)-o.margin):"—";
+  const marg=hasM?fmt(o.margin):"—";
+  const ap=o.approved?`<span class="ap g">апрув ✓</span>`:`<span class="ap r">не апрув</span>`;
   return `<div class="ocard">${img}<div class="oinfo">
     <div class="oname">${names}</div>
-    <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span> · <span>дроп <b>${fmt(o.drop)}</b> ₴</span> · <span>маржа <b class="${(o.margin||0)>=0?'g':'r'}">${fmt(o.margin)}</b> ₴</span>${o.upsSum?` · <span>допрод <b class="g">${fmt(o.upsSum)}</b> ₴</span>`:""} · ${ap} · <span class="pct">${o.day}</span></div>
+    <div class="omet">
+      ${o.ext?`<span class="onum">№ ${o.ext}</span>`:""}
+      <span>продажна <b>${fmt(o.sum)}</b> ₴</span>
+      <span>дроп <b>${drop}</b>${hasM?" ₴":""}</span>
+      <span>маржа <b class="${hasM?'g':''}">${marg}</b>${hasM?" ₴":""}</span>
+      ${o.upsSum?`<span>допрод <b class="g">${fmt(o.upsSum)}</b> ₴</span>`:""}
+      ${ap}
+      <span>${o.day}</span>
+    </div>
   </div></div>`;
 }
 async function fillOrders(uid){
