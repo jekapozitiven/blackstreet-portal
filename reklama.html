@@ -62,12 +62,17 @@
   <div class="sub">Категорії = ті, що реально рекламуються в Google Ads (типи товару в кампаніях, по кожному магазину). Заявки/маржа з сайтів привʼязуються до них у вкладці «Прив'язка».</div>
 
   <div class="bar">
+    <button class="ghost" id="pToday">Сьогодні</button>
+    <button class="ghost" id="pYest">Вчора</button>
+    <button class="ghost" id="d7">7 днів</button>
+    <button class="ghost" id="d15">15 днів</button>
+    <button class="ghost" id="pThisM">Цей місяць</button>
+    <button class="ghost" id="pLastM">Минулий місяць</button>
+    <button class="ghost" id="all">Весь період</button>
+    <span style="width:12px"></span>
     <label>Від<input type="date" id="from"></label>
     <label>До<input type="date" id="to"></label>
     <button id="apply">Показати</button>
-    <button class="ghost" id="d7">7 днів</button>
-    <button class="ghost" id="d30">30 днів</button>
-    <button class="ghost" id="all">Весь період</button>
     <span style="flex:1"></span>
     <button class="ghost on" id="vTable">Таблиця</button>
     <button class="ghost" id="vMap">Прив'язка</button>
@@ -428,11 +433,17 @@ async function saveMap(src,ok,gKey){
   }catch(e){ el("status").textContent="Помилка збереження"; }
 }
 
-function setRange(days){ const [,mx]=bounds(); if(!mx)return; const d=new Date(mx); d.setDate(d.getDate()-(days-1)); el("from").value=d.toISOString().slice(0,10); el("to").value=mx; render(); }
+const isoLocal=d=>{const z=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());};
+function setPeriod(f,t){ el("from").value=f; el("to").value=t; render(); }
+function setRange(days){ const t=new Date(); const f=new Date(); f.setDate(f.getDate()-(days-1)); setPeriod(isoLocal(f),isoLocal(t)); }
 el("apply").onclick=render;
 el("reload").onclick=loadData;
+el("pToday").onclick=()=>{const t=isoLocal(new Date());setPeriod(t,t);};
+el("pYest").onclick=()=>{const d=new Date();d.setDate(d.getDate()-1);const t=isoLocal(d);setPeriod(t,t);};
 el("d7").onclick=()=>setRange(7);
-el("d30").onclick=()=>setRange(30);
+el("d15").onclick=()=>setRange(15);
+el("pThisM").onclick=()=>{const n=new Date();setPeriod(isoLocal(new Date(n.getFullYear(),n.getMonth(),1)),isoLocal(n));};
+el("pLastM").onclick=()=>{const n=new Date();setPeriod(isoLocal(new Date(n.getFullYear(),n.getMonth()-1,1)),isoLocal(new Date(n.getFullYear(),n.getMonth(),0)));};
 el("all").onclick=()=>{const [mn,mx]=bounds();el("from").value=mn||"";el("to").value=mx||"";render();};
 el("vTable").onclick=()=>{el("vTable").classList.add("on");el("vMap").classList.remove("on");el("tableView").style.display="";el("mapView").style.display="none";render();};
 el("vMap").onclick=()=>{el("vMap").classList.add("on");el("vTable").classList.remove("on");el("tableView").style.display="none";el("mapView").style.display="";render();};
