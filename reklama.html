@@ -29,7 +29,9 @@
   .kpi .v{font-size:20px;font-weight:700;margin-top:4px;font-family:var(--mono)}
   .shop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 6px 10px;margin-bottom:16px;overflow-x:auto}
   .shop h2{font-size:15px;margin:10px 12px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-  .shop h2 .t{color:var(--muted);font-size:12px;font-weight:500;font-family:var(--mono)}
+  .shop h2 .t{color:var(--muted);font-size:12.5px;font-weight:500;font-family:var(--mono)}
+  .shop h2 .t b{color:var(--text);font-weight:700}
+  .shop h2 .t b.g{color:var(--green)} .shop h2 .t b.bd{color:var(--accent)}
   table{width:100%;border-collapse:collapse;min-width:820px}
   th,td{padding:7px 10px;text-align:right;border-top:1px solid var(--line);font-family:var(--mono);font-size:13px;white-space:nowrap}
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-top:0}
@@ -229,7 +231,7 @@ function renderTable(f,t){
       body=rows.map(r=>rowHtml(r,false,src)).join("")+totRow;
     }
     html+=`<div class="shop"><h2>${src}
-        <span class="t">заявок ${fmt(tot.leads)} · апрув ${fmt(tot.approved)} (${tpct}%) · маржа ${fmt(tot.margin)} · бюджет ${fmt(tot.budget)} ₴</span></h2>
+        <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
         <th>Бюджет ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
