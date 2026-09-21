@@ -158,8 +158,8 @@ function aggCats(src,f,t){
   for(const day in days){ if(!inRange(day,f,t))continue;
     const cells=days[day];
     for(const ck in cells){ const c=cells[ck];
-      const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sum:0,margin:0,upsSum:0});
-      o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
+      const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0});
+      o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sold+=+c.sold||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
     }}
   return out;
 }
@@ -173,7 +173,7 @@ function render(){
 
 function renderTable(f,t){
   const srcs=sources();
-  const grand={leads:0,approved:0,margin:0,budget:0,ups:0};
+  const grand={leads:0,approved:0,sold:0,margin:0,budget:0,ups:0};
   ROWART={}; ROWUID=0;
   let cuidN=0;                 // наскрізний лічильник кампаній (унікальний між магазинами)
   let html="";
@@ -182,28 +182,27 @@ function renderTable(f,t){
     const orders=aggCats(src,f,t);
     // база рядків = рекламовані Google-категорії
     const byAdv={};
-    for(const a of adv){ byAdv[a.key]={key:a.key,cat:a.name,leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:sumCost(g[a.key],f,t),wkeys:[]}; }
+    for(const a of adv){ byAdv[a.key]={key:a.key,cat:a.name,leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0,budget:sumCost(g[a.key],f,t),wkeys:[]}; }
     // розкидати наші замовлення по рекламованих категоріях
-    const unmapped={key:"_noads",cat:"Замовлення без реклами",leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:[]};
+    const unmapped={key:"_noads",cat:"Замовлення без реклами",leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:[]};
     for(const ck in orders){ const o=orders[ck]; const tgt=m[ck];
       const dst=(tgt&&byAdv[tgt])?byAdv[tgt]:unmapped;
-      dst.leads+=o.leads;dst.approved+=o.approved;dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(ck);
+      dst.leads+=o.leads;dst.approved+=o.approved;dst.sold+=(o.sold||0);dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(ck);
     }
-    let rows=Object.values(byAdv).map(r=>({...r,net:r.margin-r.budget}));
-    if(unmapped.leads||unmapped.margin){ unmapped.net=unmapped.margin; }
+    let rows=Object.values(byAdv);
     const hasUnmapped=unmapped.leads||unmapped.margin;
 
     const allR=rows.concat(hasUnmapped?[unmapped]:[]);
-    const tot=allR.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
-      {leads:0,approved:0,sum:0,margin:0,upsSum:0,budget:0});
-    grand.leads+=tot.leads;grand.approved+=tot.approved;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
+    const tot=allR.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sold:a.sold+(r.sold||0),sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
+      {leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0,budget:0});
+    grand.leads+=tot.leads;grand.approved+=tot.approved;grand.sold+=tot.sold;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
     const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
-    const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,margin:tot.margin,budget:tot.budget,sum:tot.sum,net:tot.margin-tot.budget,upsSum:tot.upsSum},true);
+    const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,sold:tot.sold,margin:tot.margin,budget:tot.budget,sum:tot.sum,upsSum:tot.upsSum},true);
 
     const grouped = Object.keys(cc).length>0;
     let body;
     if(!adv.length){
-      body=`<tr><td class="empty" colspan="9">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
+      body=`<tr><td class="empty" colspan="10">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
     } else if(grouped){
       // кампанія-каталог «Все Товари» — в неї кладемо категорії без явної кампанії
       const campVals=Object.values(cc).map(x=>x&&x.camp).filter(Boolean);
@@ -213,8 +212,8 @@ function renderTable(f,t){
       const groups={};
       for(const r of rows){
         const camp=(cc[r.key]&&cc[r.key].camp)||catchAll||"Без кампанії";
-        const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,margin:0,budget:0,sum:0,upsSum:0});
-        gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum;
+        const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,sold:0,margin:0,budget:0,sum:0,upsSum:0});
+        gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.sold+=(r.sold||0);gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum;
       }
       const gArr=Object.values(groups).sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
       body="";
@@ -234,17 +233,18 @@ function renderTable(f,t){
         <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
-        <th>Бюджет ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
+        <th>Викуп %</th><th>Бюджет ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
       </tr></thead><tbody>${body}</tbody></table></div>`;
   }
   const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
-  const gnet=grand.margin-grand.budget;
+  const gbuy=grand.approved?grand.sold/grand.approved:0;
+  const gnet=(grand.margin*gbuy)-grand.budget;   // чистими з викупом
   el("kpis").innerHTML=`
     <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
     <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div></div>
-    <div class="kpi"><div class="l">Маржа</div><div class="v g">${fmt(grand.margin)} ₴</div></div>
+    <div class="kpi"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${Math.round(gbuy*100)}%</span></div></div>
     <div class="kpi"><div class="l">Бюджет</div><div class="v">${fmt(grand.budget)} ₴</div></div>
-    <div class="kpi"><div class="l">Чистими</div><div class="v ${gnet>=0?'g':'r'}">${fmt(gnet)} ₴</div></div>`;
+    <div class="kpi"><div class="l">Чистими (з викупом)</div><div class="v ${gnet>=0?'g':'r'}">${fmt(gnet)} ₴</div></div>`;
   el("shops").innerHTML=html||"<div class='note'>Немає даних.</div>";
   attachExpand();
   attachCampToggle();
@@ -268,26 +268,34 @@ function attachCampToggle(){
 
 function cellsHtml(r){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
+  const buy=r.approved?(r.sold||0)/r.approved:0;      // викуп % = виіуплено / апрув
+  const chista=(r.margin||0)*buy;                       // чиста = валова × викуп
+  const net=chista-(r.budget||0);                      // чистими після бюджету
   const roas=r.budget?(r.sum||0)/r.budget:0;
-  const roi=r.budget?(r.margin-r.budget)/r.budget:0;
+  const roi=r.budget?net/r.budget:0;
   return `<td>${fmt(r.leads)}</td>
     <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(r.margin)}</td>
+    <td class="${buy>=0.6?'g':(buy?'r':'')}">${r.approved?Math.round(buy*100)+'%':"—"}</td>
     <td>${r.budget?fmt(r.budget):"—"}</td>
     <td class="${roas>=1?'g':'r'}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
     <td class="${roi>=0?'g':'r'}">${r.budget?Math.round(roi*100)+'%':"—"}</td>
-    <td class="${r.net>=0?'g':'r'}">${r.budget?fmt(r.net):"—"}</td>
+    <td class="${net>=0?'g':'r'}">${r.budget?fmt(net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
 function campHtml(gr,cuid){
   const apr=gr.leads?Math.round(gr.approved/gr.leads*100):0;
-  const net=gr.margin-gr.budget;
+  const buy=gr.approved?(gr.sold||0)/gr.approved:0;
+  const chista=(gr.margin||0)*buy;
+  const net=chista-(gr.budget||0);
   const roas=gr.budget?(gr.sum||0)/gr.budget:0;
-  const roi=gr.budget?(gr.margin-gr.budget)/gr.budget:0;
+  const roi=gr.budget?net/gr.budget:0;
   const n=gr.rows.length;
   return `<tr class="camp" data-cuid="${cuid}"><td class="name"><span class="caret">▸</span>${gr.camp} <span class="pct" style="font-weight:400">· ${n} катег.</span></td>
     <td>${fmt(gr.leads)}</td><td>${fmt(gr.approved)} <span class="pct">${apr}%</span></td>
-    <td>${fmt(gr.margin)}</td><td>${gr.budget?fmt(gr.budget):"—"}</td>
+    <td>${fmt(gr.margin)}</td>
+    <td class="${buy>=0.6?'g':(buy?'r':'')}">${gr.approved?Math.round(buy*100)+'%':"—"}</td>
+    <td>${gr.budget?fmt(gr.budget):"—"}</td>
     <td class="${roas>=1?'g':'r'}">${gr.budget?roas.toFixed(2)+'×':"—"}</td>
     <td class="${roi>=0?'g':'r'}">${gr.budget?Math.round(roi*100)+'%':"—"}</td>
     <td class="${net>=0?'g':'r'}">${gr.budget?fmt(net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
@@ -301,7 +309,7 @@ function rowHtml(r,isTot,src,sub,campId){
   if(!(r.leads>0)) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const uid="r"+(ROWUID++); ROWMETA[uid]={src, wkeys:(r.wkeys||[])};
   const main=`<tr class="${cls}"${dc}${hid}><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
-  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="9"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
+  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="10"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
   return main+detail;
 }
 function attachExpand(){
@@ -320,9 +328,9 @@ function cardHtml(o){
   const img=it.img?`<img class="oimg" src="${it.img}" loading="lazy" onerror="this.classList.add('noimg');this.removeAttribute('src')">`:`<div class="oimg noimg"></div>`;
   const names=((o.items||[]).map(x=>{const nm=x.name||x.sku||"товар"; return x.href?`<a href="${x.href}" target="_blank" rel="noopener">${nm}</a>`:`<span>${nm}</span>`;}).join(", "))||(o.catName||"—");
   const hasM=o.margin && o.margin>0;
-  const drop=hasM?fmt((o.sum||0)-o.margin):"—";
+  const drop=(o.drop||o.drop===0)? (o.approved?fmt(o.drop):"—") : (hasM?fmt((o.sum||0)-o.margin):"—");
   const marg=hasM?fmt(o.margin):"—";
-  const ap=o.approved?`<span class="ap g">апрув ✓</span>`:`<span class="ap r">не апрув</span>`;
+  const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
   return `<div class="ocard">${img}<div class="oinfo">
     <div class="oname">${names}</div>
     <div class="omet">
