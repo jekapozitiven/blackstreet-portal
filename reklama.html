@@ -47,9 +47,13 @@
   tr.camp td.name{color:var(--text);user-select:none}
   td.name.sub{padding-left:28px}
   tr.detail td{background:#12151a;border-top:0;padding:2px 12px 10px}
-  .arts{display:flex;flex-wrap:wrap;gap:6px;white-space:normal}
-  .chip{background:#0f1216;border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-family:var(--mono);font-size:12px}
-  .chip b{color:var(--muted);font-weight:400;margin-left:4px}
+  .ocard{display:flex;gap:10px;align-items:center;padding:6px 4px;border-top:1px solid var(--line)}
+  .ocard:first-child{border-top:0}
+  .oimg{width:44px;height:44px;border-radius:6px;object-fit:cover;background:#0f1216;flex:none}
+  .oimg.noimg{display:flex;align-items:center;justify-content:center;color:var(--muted);border:1px solid var(--line)}
+  .oinfo{min-width:0}
+  .oname{font-size:13px;white-space:normal;line-height:1.25} .oname a{color:var(--accent);text-decoration:none} .oname a:hover{text-decoration:underline}
+  .omet{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px;white-space:normal} .omet b{color:var(--text)}
   .maprow{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line)}
   .maprow .gname{flex:1;font-size:13px} .maprow .gb{font-family:var(--mono);color:var(--muted);width:120px;text-align:right}
   .empty{color:var(--muted);font-size:12px;padding:8px 12px}
@@ -93,12 +97,10 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
 // ADS[src][day][workerCatKey]={cat,leads,approved,sum,margin,upsSum}  — наші замовлення по категоріях воркера
 // GCAT[src][gKey]={name,"дата":витрати}                               — рекламовані категорії Google + бюджет
 // MAP[src][workerCatKey]=gKey                                          — наша категорія замовлення -> рекламована категорія Google
-// ARTS[src][workerCatKey]={артикул:кількість}                         — артикули по категорії (для розкриття рядка)
 // GCATCAMP[src][gKey]={cat,camp,lastDate}                              — поточна кампанія категорії (авто з Google Ads)
-// LIVEORD[src][day][oid]={catKey,catName,approved,sum,upsSum,margin}   — миттєві заказы (вебхук+коллектор)
-// COMPLETE — множина «повних» днів (їх беремо з LIVEORD, а не з ADS)
-let ADS = {}, GCAT = {}, MAP = {}, ARTS = {}, GCATCAMP = {}, LIVEORD = {}, COMPLETE = new Set();
-let ROWART = {}, ROWUID = 0;   // uid рядка -> [[артикул,кількість]...] для розкриття
+// ads-ord[src][day][oid]={catKey,catName,approved,sum,upsSum,margin,drop,items} — поордерна деталізація (для карток)
+let ADS = {}, GCAT = {}, MAP = {}, GCATCAMP = {};
+let ROWUID = 0, ROWMETA = {}, ORDCACHE = {};   // ROWMETA[uid]={src,wkeys}; ORDCACHE[src]=дерево ads-ord
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
 const el = id => document.getElementById(id);
@@ -106,46 +108,31 @@ const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,ar,cc,lo,cd] = await Promise.all([
+  const [a,g,m,cc] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
-    fetch(FB+"/shop-reports/ads-articles.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-catcamp.json").then(r=>r.json()),
-    fetch(FB+"/shop-reports/ads-live-ord.json").then(r=>r.json()),
-    fetch(FB+"/shop-reports/ads-live-meta/completeDays.json").then(r=>r.json()),
   ]);
-  ADS=a||{}; GCAT=g||{}; MAP=m||{}; ARTS=ar||{}; GCATCAMP=cc||{};
-  LIVEORD=lo||{}; COMPLETE=new Set(Array.isArray(cd)?cd:[]);
+  ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; ORDCACHE={};
   const [mn,mx]=bounds();
   if(mn&&!el("from").value) el("from").value=mn;
   if(mx&&!el("to").value) el("to").value=mx;
   render();
+}
+// поордерная детализация магазина (загружаем по требованию, кэшируем)
+async function loadOrders(src){
+  if(ORDCACHE[src]) return ORDCACHE[src];
+  let tree={};
+  try{ tree=await fetch(FB+"/shop-reports/ads-ord/"+enc(src)+".json").then(r=>r.json())||{}; }catch(e){}
+  ORDCACHE[src]=tree||{}; return ORDCACHE[src];
 }
 
 function bounds(){
   let mn=null,mx=null;
   for(const s in ADS) for(const d in ADS[s]){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
   for(const s in GCAT) for(const k in GCAT[s]) for(const d in GCAT[s][k]){ if(d==="name")continue; if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
-  for(const s in LIVEORD) for(const d in LIVEORD[s]){ if(!COMPLETE.has(d))continue; if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
   return [mn,mx];
-}
-// ячейки категорий за день: для «полных» дней — из ads-live-ord (мгновенно), иначе из ADS
-function dayCells(src,day){
-  if(COMPLETE.has(day) && LIVEORD[src] && LIVEORD[src][day]){
-    const ords=LIVEORD[src][day], cells={};
-    for(const oid in ords){ const o=ords[oid]; if(!o)continue;
-      const c=cells[o.catKey]||(cells[o.catKey]={cat:o.catName||o.catKey,leads:0,approved:0,sum:0,margin:0,upsSum:0});
-      c.leads+=1;c.approved+=+o.approved||0;c.sum+=+o.sum||0;c.margin+=+o.margin||0;c.upsSum+=+o.upsSum||0;
-    }
-    return cells;
-  }
-  return (ADS[src]&&ADS[src][day])||{};
-}
-function daysOf(src){
-  const s=new Set(Object.keys(ADS[src]||{}));
-  if(LIVEORD[src]) for(const d in LIVEORD[src]) if(COMPLETE.has(d)) s.add(d);
-  return s;
 }
 function sources(){
   const s=new Set([...Object.keys(ADS),...Object.keys(GCAT)]);
@@ -161,9 +148,9 @@ function advCats(src){
 }
 // наші категорії замовлень за період: workerKey -> {key,cat,leads,approved,sum,margin,upsSum}
 function aggCats(src,f,t){
-  const out={};
-  for(const day of daysOf(src)){ if(!inRange(day,f,t))continue;
-    const cells=dayCells(src,day);
+  const out={}, days=(ADS[src]||{});
+  for(const day in days){ if(!inRange(day,f,t))continue;
+    const cells=days[day];
     for(const ck in cells){ const c=cells[ck];
       const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sum:0,margin:0,upsSum:0});
       o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
@@ -178,18 +165,6 @@ function render(){
   el("status").textContent="Оновлено: "+new Date().toLocaleString("uk-UA");
 }
 
-function mergeArticles(src,keys){
-  const acc={}, a=(ARTS[src]||{});
-  for(const k of keys){ const d=a[k]; if(!d) continue;
-    // формат — список пар [артикул,кількість]; підтримуємо і старий словник
-    const items = Array.isArray(d) ? d : Object.values(d);
-    for(const pr of items){
-      if(Array.isArray(pr)){ const sku=pr[0], c=+pr[1]||0; if(sku) acc[sku]=(acc[sku]||0)+c; }
-      else if(pr && typeof pr==="object"){ const sku=pr[0]||pr.sku; if(sku) acc[sku]=(acc[sku]||0)+(+pr[1]||+pr.n||0); }
-    }
-  }
-  return Object.entries(acc).sort((x,y)=>y[1]-x[1]);
-}
 function renderTable(f,t){
   const srcs=sources();
   const grand={leads:0,approved:0,margin:0,budget:0,ups:0};
@@ -317,25 +292,44 @@ function rowHtml(r,isTot,src,sub,campId){
   const sc=sub?" sub":"";
   const dc=campId?` data-camp="${campId}"`:"";
   const hid=campId?' style="display:none"':"";
-  const arts=mergeArticles(src,r.wkeys||[]);
-  if(!arts.length) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
-  const uid="r"+(ROWUID++); ROWART[uid]=arts;
+  if(!(r.leads>0)) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
+  const uid="r"+(ROWUID++); ROWMETA[uid]={src, wkeys:(r.wkeys||[])};
   const main=`<tr class="${cls}"${dc}${hid}><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
-  const chips=arts.map(([sku,c])=>`<span class="chip">${sku}<b>×${c}</b></span>`).join("");
-  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="9">
-    <div class="arts">${chips}</div>
-    <div class="note" style="margin:6px 0 0">${arts.length} артикул(ів) у цій категорії</div></td></tr>`;
+  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="9"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
   return main+detail;
 }
 function attachExpand(){
   el("shops").querySelectorAll("td.name.exp").forEach(td=>{
-    td.onclick=()=>{
-      const det=el("det-"+td.dataset.uid); if(!det)return;
+    td.onclick=async ()=>{
+      const uid=td.dataset.uid, det=el("det-"+uid); if(!det)return;
       const open=det.style.display==="none";
       det.style.display=open?"":"none";
       const tr=td.parentElement; if(tr) tr.classList.toggle("open",open);
+      if(open && !det.dataset.loaded){ det.dataset.loaded="1"; await fillOrders(uid); }
     };
   });
+}
+function cardHtml(o){
+  const it=(o.items&&o.items[0])||{};
+  const img=it.img?`<img class="oimg" src="${it.img}" loading="lazy" onerror="this.style.visibility='hidden'">`:`<div class="oimg noimg">—</div>`;
+  const names=((o.items||[]).map(x=>{const nm=x.name||x.sku||"товар"; return x.href?`<a href="${x.href}" target="_blank" rel="noopener">${nm}</a>`:nm;}).join(", "))||(o.catName||"");
+  const ap=o.approved?`<span class="g">апрув ✓</span>`:`<span class="pct">не апрув</span>`;
+  return `<div class="ocard">${img}<div class="oinfo">
+    <div class="oname">${names}</div>
+    <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span> · <span>дроп <b>${fmt(o.drop)}</b> ₴</span> · <span>маржа <b class="${(o.margin||0)>=0?'g':'r'}">${fmt(o.margin)}</b> ₴</span>${o.upsSum?` · <span>допрод <b class="g">${fmt(o.upsSum)}</b> ₴</span>`:""} · ${ap} · <span class="pct">${o.day}</span></div>
+  </div></div>`;
+}
+async function fillOrders(uid){
+  const meta=ROWMETA[uid]; const box=el("box-"+uid); if(!meta||!box)return;
+  box.innerHTML=`<span class="note">Завантаження…</span>`;
+  const f=el("from").value, t=el("to").value;
+  const tree=await loadOrders(meta.src); const wk=new Set(meta.wkeys); const rows=[];
+  for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
+    for(const oid in ords){ const o=ords[oid]; if(o&&wk.has(o.catKey)) rows.push(Object.assign({day},o)); } }
+  rows.sort((a,b)=> a.day<b.day?1:a.day>b.day?-1:0);
+  box.innerHTML = rows.length
+    ? rows.map(cardHtml).join("")+`<div class="note" style="margin-top:6px">${rows.length} заказ(ів) за період</div>`
+    : `<span class="note">Немає заказів за період.</span>`;
 }
 
 function renderMap(f,t){
