@@ -90,7 +90,9 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
 // MAP[src][workerCatKey]=gKey                                          — наша категорія замовлення -> рекламована категорія Google
 // ARTS[src][workerCatKey]={артикул:кількість}                         — артикули по категорії (для розкриття рядка)
 // GCATCAMP[src][gKey]={cat,camp,lastDate}                              — поточна кампанія категорії (авто з Google Ads)
-let ADS = {}, GCAT = {}, MAP = {}, ARTS = {}, GCATCAMP = {};
+// LIVEORD[src][day][oid]={catKey,catName,approved,sum,upsSum,margin}   — миттєві заказы (вебхук+коллектор)
+// COMPLETE — множина «повних» днів (їх беремо з LIVEORD, а не з ADS)
+let ADS = {}, GCAT = {}, MAP = {}, ARTS = {}, GCATCAMP = {}, LIVEORD = {}, COMPLETE = new Set();
 let ROWART = {}, ROWUID = 0;   // uid рядка -> [[артикул,кількість]...] для розкриття
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
@@ -99,14 +101,17 @@ const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,ar,cc] = await Promise.all([
+  const [a,g,m,ar,cc,lo,cd] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-articles.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-catcamp.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-live-ord.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-live-meta/completeDays.json").then(r=>r.json()),
   ]);
   ADS=a||{}; GCAT=g||{}; MAP=m||{}; ARTS=ar||{}; GCATCAMP=cc||{};
+  LIVEORD=lo||{}; COMPLETE=new Set(Array.isArray(cd)?cd:[]);
   const [mn,mx]=bounds();
   if(mn&&!el("from").value) el("from").value=mn;
   if(mx&&!el("to").value) el("to").value=mx;
@@ -117,7 +122,25 @@ function bounds(){
   let mn=null,mx=null;
   for(const s in ADS) for(const d in ADS[s]){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
   for(const s in GCAT) for(const k in GCAT[s]) for(const d in GCAT[s][k]){ if(d==="name")continue; if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
+  for(const s in LIVEORD) for(const d in LIVEORD[s]){ if(!COMPLETE.has(d))continue; if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
   return [mn,mx];
+}
+// ячейки категорий за день: для «полных» дней — из ads-live-ord (мгновенно), иначе из ADS
+function dayCells(src,day){
+  if(COMPLETE.has(day) && LIVEORD[src] && LIVEORD[src][day]){
+    const ords=LIVEORD[src][day], cells={};
+    for(const oid in ords){ const o=ords[oid]; if(!o)continue;
+      const c=cells[o.catKey]||(cells[o.catKey]={cat:o.catName||o.catKey,leads:0,approved:0,sum:0,margin:0,upsSum:0});
+      c.leads+=1;c.approved+=+o.approved||0;c.sum+=+o.sum||0;c.margin+=+o.margin||0;c.upsSum+=+o.upsSum||0;
+    }
+    return cells;
+  }
+  return (ADS[src]&&ADS[src][day])||{};
+}
+function daysOf(src){
+  const s=new Set(Object.keys(ADS[src]||{}));
+  if(LIVEORD[src]) for(const d in LIVEORD[src]) if(COMPLETE.has(d)) s.add(d);
+  return s;
 }
 function sources(){
   const s=new Set([...Object.keys(ADS),...Object.keys(GCAT)]);
@@ -133,9 +156,10 @@ function advCats(src){
 }
 // наші категорії замовлень за період: workerKey -> {key,cat,leads,approved,sum,margin,upsSum}
 function aggCats(src,f,t){
-  const out={}, days=(ADS[src]||{});
-  for(const day in days){ if(!inRange(day,f,t))continue;
-    for(const ck in days[day]){ const c=days[day][ck];
+  const out={};
+  for(const day of daysOf(src)){ if(!inRange(day,f,t))continue;
+    const cells=dayCells(src,day);
+    for(const ck in cells){ const c=cells[ck];
       const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sum:0,margin:0,upsSum:0});
       o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
     }}
