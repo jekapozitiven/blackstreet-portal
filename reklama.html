@@ -63,6 +63,9 @@
   .maprow{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line)}
   .maprow .gname{flex:1;font-size:13px} .maprow .gb{font-family:var(--mono);color:var(--muted);width:120px;text-align:right}
   .empty{color:var(--muted);font-size:12px;padding:8px 12px}
+  .cfg{display:flex;flex-wrap:wrap;gap:12px;align-items:end;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .cfg label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+  .cfg input{background:#0f1216;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;width:160px}
   @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -86,7 +89,16 @@
     <span style="flex:1"></span>
     <button class="ghost on" id="vTable">Таблиця</button>
     <button class="ghost" id="vMap">Прив'язка</button>
+    <button class="ghost" id="cfgBtn">⚙ Налаштування</button>
     <button class="ghost" id="reload">↻</button>
+  </div>
+
+  <div class="cfg" id="cfgPanel" style="display:none">
+    <label>Викуп % (ручний, порожньо = рахувати авто)<input type="number" id="cfgBuyout" min="0" max="100" step="1" placeholder="напр. 72"></label>
+    <label>Середня сума повернення, ₴ (доставка туди-назад)<input type="number" id="cfgReturn" min="0" step="1" placeholder="напр. 120"></label>
+    <label>Ставка КЦ за апрув, ₴<input type="number" id="cfgZp" min="0" step="1" placeholder="24"></label>
+    <button id="cfgSave">Зберегти</button>
+    <span class="note" id="cfgNote"></span>
   </div>
 
   <div id="tableView">
@@ -107,6 +119,8 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
 // ads-ord[src][day][oid]={catKey,catName,approved,sum,upsSum,margin,drop,items} — поордерна деталізація (для карток)
 let ADS = {}, GCAT = {}, MAP = {}, GCATCAMP = {};
 let ROWUID = 0, ROWMETA = {}, ORDCACHE = {};   // ROWMETA[uid]={src,wkeys}; ORDCACHE[src]=дерево ads-ord
+// налаштування розрахунку (редагуються, зберігаються в ads-settings)
+let SETTINGS = {buyout:null, returnCost:0, zpRate:24};   // buyout% ручний (null=авто), сума повернення ₴, ставка КЦ ₴/апрув
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
 const el = id => document.getElementById(id);
@@ -114,13 +128,19 @@ const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,cc] = await Promise.all([
+  const [a,g,m,cc,st] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-catcamp.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-settings.json").then(r=>r.json()),
   ]);
   ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; ORDCACHE={};
+  if(st&&typeof st==="object"){ SETTINGS={buyout:(st.buyout==null?null:+st.buyout), returnCost:+st.returnCost||0, zpRate:(st.zpRate==null?24:+st.zpRate)}; }
+  // заповнити поля панелі
+  el("cfgBuyout").value = SETTINGS.buyout==null?"":SETTINGS.buyout;
+  el("cfgReturn").value = SETTINGS.returnCost||"";
+  el("cfgZp").value = SETTINGS.zpRate==null?"":SETTINGS.zpRate;
   const [mn,mx]=bounds();
   if(mn&&!el("from").value) el("from").value=mn;
   if(mx&&!el("to").value) el("to").value=mx;
@@ -202,7 +222,7 @@ function renderTable(f,t){
     const grouped = Object.keys(cc).length>0;
     let body;
     if(!adv.length){
-      body=`<tr><td class="empty" colspan="10">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
+      body=`<tr><td class="empty" colspan="12">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
     } else if(grouped){
       // кампанія-каталог «Все Товари» — в неї кладемо категорії без явної кампанії
       const campVals=Object.values(cc).map(x=>x&&x.camp).filter(Boolean);
@@ -233,19 +253,17 @@ function renderTable(f,t){
         <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
-        <th>Викуп %</th><th>Бюджет ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
+        <th>Викуп %</th><th>Бюджет ₴</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
       </tr></thead><tbody>${body}</tbody></table></div>`;
   }
   const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
-  const gfin=(grand.sold||0)+(grand.refused||0);
-  const gbuy=gfin?grand.sold/gfin:0;
-  const gnet=(grand.margin*gbuy)-grand.budget;   // чистими з викупом
+  const gd=calcNet({approved:grand.approved,sold:grand.sold,refused:grand.refused,margin:grand.margin,budget:grand.budget});
   el("kpis").innerHTML=`
     <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
     <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div></div>
-    <div class="kpi"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${Math.round(gbuy*100)}%</span></div></div>
-    <div class="kpi"><div class="l">Бюджет</div><div class="v">${fmt(grand.budget)} ₴</div></div>
-    <div class="kpi"><div class="l">Чистими (з викупом)</div><div class="v ${gnet>=0?'g':'r'}">${gfin?fmt(gnet)+" ₴":"—"}</div></div>`;
+    <div class="kpi"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${gd.hasBuy?Math.round(gd.bo*100)+"%":"—"}</span></div></div>
+    <div class="kpi"><div class="l">Бюджет · ЗП · поверн.</div><div class="v">${fmt(grand.budget)} <span class="pct" style="font-size:12px">${fmt(gd.zp)}·${fmt(gd.ret)}</span></div></div>
+    <div class="kpi"><div class="l">Чистий прибуток</div><div class="v ${gd.net>=0?'g':'r'}">${gd.hasBuy?fmt(gd.net)+" ₴":"—"}</div></div>`;
   el("shops").innerHTML=html||"<div class='note'>Немає даних.</div>";
   attachExpand();
   attachCampToggle();
@@ -267,41 +285,51 @@ function attachCampToggle(){
   });
 }
 
+// розрахунок по налаштуваннях: викуп (ручний або авто), ЗП, повернення, чистий прибуток
+function calcNet(r){
+  const fin=(r.sold||0)+(r.refused||0);
+  const hasBuy=(SETTINGS.buyout!=null)||fin>0;
+  const bo=(SETTINGS.buyout!=null)?(+SETTINGS.buyout/100):(fin?(r.sold||0)/fin:0);
+  const appr=r.approved||0;
+  const zp=appr*(+SETTINGS.zpRate||0);                          // ЗП = апрув × ставка
+  const ret=appr*(1-bo)*(+SETTINGS.returnCost||0);             // повернення = апрув × (1−викуп) × сума
+  const vyr=(r.margin||0)*bo;                                   // валова × викуп
+  const net=vyr-(r.budget||0)-zp-ret;                          // чистий прибуток
+  return {fin,hasBuy,bo,zp,ret,net};
+}
 function cellsHtml(r){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
-  const fin=(r.sold||0)+(r.refused||0);               // фінальні (виіуплені + повернені)
-  const buy=fin?(r.sold||0)/fin:0;                     // викуп % = виіуплено / фінальні
-  const chista=(r.margin||0)*buy;                       // чиста = валова × викуп
-  const net=chista-(r.budget||0);                      // чистими після бюджету
+  const d=calcNet(r);
   const roas=r.budget?(r.sum||0)/r.budget:0;
-  const roi=r.budget?net/r.budget:0;
+  const roi=r.budget?d.net/r.budget:0;
   return `<td>${fmt(r.leads)}</td>
     <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(r.margin)}</td>
-    <td class="${buy>=0.6?'g':(buy?'r':'')}">${fin?Math.round(buy*100)+'%':"—"}</td>
+    <td class="${d.bo>=0.6?'g':(d.bo?'r':'')}">${d.hasBuy?Math.round(d.bo*100)+'%':"—"}</td>
     <td>${r.budget?fmt(r.budget):"—"}</td>
+    <td class="${d.zp?'r':''}">${d.zp?fmt(d.zp):"—"}</td>
+    <td class="${d.ret?'r':''}">${d.ret?fmt(d.ret):"—"}</td>
     <td class="${roas>=1?'g':'r'}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
-    <td class="${roi>=0?'g':'r'}">${(r.budget&&fin)?Math.round(roi*100)+'%':"—"}</td>
-    <td class="${net>=0?'g':'r'}">${(r.budget&&fin)?fmt(net):"—"}</td>
+    <td class="${roi>=0?'g':'r'}">${(r.budget&&d.hasBuy)?Math.round(roi*100)+'%':"—"}</td>
+    <td class="${d.net>=0?'g':'r'}">${d.hasBuy?fmt(d.net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
 function campHtml(gr,cuid){
   const apr=gr.leads?Math.round(gr.approved/gr.leads*100):0;
-  const fin=(gr.sold||0)+(gr.refused||0);
-  const buy=fin?(gr.sold||0)/fin:0;
-  const chista=(gr.margin||0)*buy;
-  const net=chista-(gr.budget||0);
+  const d=calcNet(gr);
   const roas=gr.budget?(gr.sum||0)/gr.budget:0;
-  const roi=gr.budget?net/gr.budget:0;
+  const roi=gr.budget?d.net/gr.budget:0;
   const n=gr.rows.length;
   return `<tr class="camp" data-cuid="${cuid}"><td class="name"><span class="caret">▸</span>${gr.camp} <span class="pct" style="font-weight:400">· ${n} катег.</span></td>
     <td>${fmt(gr.leads)}</td><td>${fmt(gr.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(gr.margin)}</td>
-    <td class="${buy>=0.6?'g':(buy?'r':'')}">${fin?Math.round(buy*100)+'%':"—"}</td>
+    <td class="${d.bo>=0.6?'g':(d.bo?'r':'')}">${d.hasBuy?Math.round(d.bo*100)+'%':"—"}</td>
     <td>${gr.budget?fmt(gr.budget):"—"}</td>
+    <td class="${d.zp?'r':''}">${d.zp?fmt(d.zp):"—"}</td>
+    <td class="${d.ret?'r':''}">${d.ret?fmt(d.ret):"—"}</td>
     <td class="${roas>=1?'g':'r'}">${gr.budget?roas.toFixed(2)+'×':"—"}</td>
-    <td class="${roi>=0?'g':'r'}">${(gr.budget&&fin)?Math.round(roi*100)+'%':"—"}</td>
-    <td class="${net>=0?'g':'r'}">${(gr.budget&&fin)?fmt(net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
+    <td class="${roi>=0?'g':'r'}">${(gr.budget&&d.hasBuy)?Math.round(roi*100)+'%':"—"}</td>
+    <td class="${d.net>=0?'g':'r'}">${d.hasBuy?fmt(d.net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
 }
 function rowHtml(r,isTot,src,sub,campId){
   if(isTot) return `<tr class="tot"><td class="name">${r.cat}</td>${cellsHtml(r)}</tr>`;
@@ -312,7 +340,7 @@ function rowHtml(r,isTot,src,sub,campId){
   if(!(r.leads>0)) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const uid="r"+(ROWUID++); ROWMETA[uid]={src, wkeys:(r.wkeys||[])};
   const main=`<tr class="${cls}"${dc}${hid}><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
-  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="10"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
+  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="12"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
   return main+detail;
 }
 function attachExpand(){
@@ -467,6 +495,18 @@ el("d15").onclick=()=>setRange(15);
 el("pThisM").onclick=()=>{const n=new Date();setPeriod(isoLocal(new Date(n.getFullYear(),n.getMonth(),1)),isoLocal(n));};
 el("pLastM").onclick=()=>{const n=new Date();setPeriod(isoLocal(new Date(n.getFullYear(),n.getMonth()-1,1)),isoLocal(new Date(n.getFullYear(),n.getMonth(),0)));};
 el("all").onclick=()=>{const [mn,mx]=bounds();el("from").value=mn||"";el("to").value=mx||"";render();};
+el("cfgBtn").onclick=()=>{const p=el("cfgPanel");p.style.display=(p.style.display==="none"?"":"none");};
+el("cfgSave").onclick=async ()=>{
+  const b=el("cfgBuyout").value.trim();
+  SETTINGS.buyout = b===""?null:Math.max(0,Math.min(100,+b||0));
+  SETTINGS.returnCost = +el("cfgReturn").value||0;
+  SETTINGS.zpRate = el("cfgZp").value===""?24:(+el("cfgZp").value||0);
+  el("cfgNote").textContent="Збереження…";
+  try{ await fetch(FB+"/shop-reports/ads-settings.json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(SETTINGS)});
+       el("cfgNote").textContent="Збережено ✓ "+new Date().toLocaleTimeString("uk-UA"); }
+  catch(e){ el("cfgNote").textContent="Помилка збереження"; }
+  render();
+};
 el("vTable").onclick=()=>{el("vTable").classList.add("on");el("vMap").classList.remove("on");el("tableView").style.display="";el("mapView").style.display="none";render();};
 el("vMap").onclick=()=>{el("vMap").classList.add("on");el("vTable").classList.remove("on");el("tableView").style.display="none";el("mapView").style.display="";render();};
 
