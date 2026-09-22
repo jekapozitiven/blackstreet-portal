@@ -158,8 +158,8 @@ function aggCats(src,f,t){
   for(const day in days){ if(!inRange(day,f,t))continue;
     const cells=days[day];
     for(const ck in cells){ const c=cells[ck];
-      const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0});
-      o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sold+=+c.sold||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
+      const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0});
+      o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sold+=+c.sold||0;o.refused+=+c.refused||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
     }}
   return out;
 }
@@ -173,7 +173,7 @@ function render(){
 
 function renderTable(f,t){
   const srcs=sources();
-  const grand={leads:0,approved:0,sold:0,margin:0,budget:0,ups:0};
+  const grand={leads:0,approved:0,sold:0,refused:0,margin:0,budget:0,ups:0};
   ROWART={}; ROWUID=0;
   let cuidN=0;                 // наскрізний лічильник кампаній (унікальний між магазинами)
   let html="";
@@ -182,22 +182,22 @@ function renderTable(f,t){
     const orders=aggCats(src,f,t);
     // база рядків = рекламовані Google-категорії
     const byAdv={};
-    for(const a of adv){ byAdv[a.key]={key:a.key,cat:a.name,leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0,budget:sumCost(g[a.key],f,t),wkeys:[]}; }
+    for(const a of adv){ byAdv[a.key]={key:a.key,cat:a.name,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:sumCost(g[a.key],f,t),wkeys:[]}; }
     // розкидати наші замовлення по рекламованих категоріях
-    const unmapped={key:"_noads",cat:"Замовлення без реклами",leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:[]};
+    const unmapped={key:"_noads",cat:"Замовлення без реклами",leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:[]};
     for(const ck in orders){ const o=orders[ck]; const tgt=m[ck];
       const dst=(tgt&&byAdv[tgt])?byAdv[tgt]:unmapped;
-      dst.leads+=o.leads;dst.approved+=o.approved;dst.sold+=(o.sold||0);dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(ck);
+      dst.leads+=o.leads;dst.approved+=o.approved;dst.sold+=(o.sold||0);dst.refused+=(o.refused||0);dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(ck);
     }
     let rows=Object.values(byAdv);
     const hasUnmapped=unmapped.leads||unmapped.margin;
 
     const allR=rows.concat(hasUnmapped?[unmapped]:[]);
-    const tot=allR.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sold:a.sold+(r.sold||0),sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
-      {leads:0,approved:0,sold:0,sum:0,margin:0,upsSum:0,budget:0});
-    grand.leads+=tot.leads;grand.approved+=tot.approved;grand.sold+=tot.sold;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
+    const tot=allR.reduce((a,r)=>({leads:a.leads+r.leads,approved:a.approved+r.approved,sold:a.sold+(r.sold||0),refused:a.refused+(r.refused||0),sum:a.sum+r.sum,margin:a.margin+r.margin,upsSum:a.upsSum+r.upsSum,budget:a.budget+r.budget}),
+      {leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0});
+    grand.leads+=tot.leads;grand.approved+=tot.approved;grand.sold+=tot.sold;grand.refused+=tot.refused;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
     const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
-    const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,sold:tot.sold,margin:tot.margin,budget:tot.budget,sum:tot.sum,upsSum:tot.upsSum},true);
+    const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,sold:tot.sold,refused:tot.refused,margin:tot.margin,budget:tot.budget,sum:tot.sum,upsSum:tot.upsSum},true);
 
     const grouped = Object.keys(cc).length>0;
     let body;
@@ -212,8 +212,8 @@ function renderTable(f,t){
       const groups={};
       for(const r of rows){
         const camp=(cc[r.key]&&cc[r.key].camp)||catchAll||"Без кампанії";
-        const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,sold:0,margin:0,budget:0,sum:0,upsSum:0});
-        gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.sold+=(r.sold||0);gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum;
+        const gr=groups[camp]||(groups[camp]={camp,rows:[],leads:0,approved:0,sold:0,refused:0,margin:0,budget:0,sum:0,upsSum:0});
+        gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.sold+=(r.sold||0);gr.refused+=(r.refused||0);gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum;
       }
       const gArr=Object.values(groups).sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
       body="";
@@ -237,14 +237,15 @@ function renderTable(f,t){
       </tr></thead><tbody>${body}</tbody></table></div>`;
   }
   const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
-  const gbuy=grand.approved?grand.sold/grand.approved:0;
+  const gfin=(grand.sold||0)+(grand.refused||0);
+  const gbuy=gfin?grand.sold/gfin:0;
   const gnet=(grand.margin*gbuy)-grand.budget;   // чистими з викупом
   el("kpis").innerHTML=`
     <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
     <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div></div>
     <div class="kpi"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${Math.round(gbuy*100)}%</span></div></div>
     <div class="kpi"><div class="l">Бюджет</div><div class="v">${fmt(grand.budget)} ₴</div></div>
-    <div class="kpi"><div class="l">Чистими (з викупом)</div><div class="v ${gnet>=0?'g':'r'}">${fmt(gnet)} ₴</div></div>`;
+    <div class="kpi"><div class="l">Чистими (з викупом)</div><div class="v ${gnet>=0?'g':'r'}">${gfin?fmt(gnet)+" ₴":"—"}</div></div>`;
   el("shops").innerHTML=html||"<div class='note'>Немає даних.</div>";
   attachExpand();
   attachCampToggle();
@@ -268,7 +269,8 @@ function attachCampToggle(){
 
 function cellsHtml(r){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
-  const buy=r.approved?(r.sold||0)/r.approved:0;      // викуп % = виіуплено / апрув
+  const fin=(r.sold||0)+(r.refused||0);               // фінальні (виіуплені + повернені)
+  const buy=fin?(r.sold||0)/fin:0;                     // викуп % = виіуплено / фінальні
   const chista=(r.margin||0)*buy;                       // чиста = валова × викуп
   const net=chista-(r.budget||0);                      // чистими після бюджету
   const roas=r.budget?(r.sum||0)/r.budget:0;
@@ -276,16 +278,17 @@ function cellsHtml(r){
   return `<td>${fmt(r.leads)}</td>
     <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(r.margin)}</td>
-    <td class="${buy>=0.6?'g':(buy?'r':'')}">${r.approved?Math.round(buy*100)+'%':"—"}</td>
+    <td class="${buy>=0.6?'g':(buy?'r':'')}">${fin?Math.round(buy*100)+'%':"—"}</td>
     <td>${r.budget?fmt(r.budget):"—"}</td>
     <td class="${roas>=1?'g':'r'}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
-    <td class="${roi>=0?'g':'r'}">${r.budget?Math.round(roi*100)+'%':"—"}</td>
-    <td class="${net>=0?'g':'r'}">${r.budget?fmt(net):"—"}</td>
+    <td class="${roi>=0?'g':'r'}">${(r.budget&&fin)?Math.round(roi*100)+'%':"—"}</td>
+    <td class="${net>=0?'g':'r'}">${(r.budget&&fin)?fmt(net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
 function campHtml(gr,cuid){
   const apr=gr.leads?Math.round(gr.approved/gr.leads*100):0;
-  const buy=gr.approved?(gr.sold||0)/gr.approved:0;
+  const fin=(gr.sold||0)+(gr.refused||0);
+  const buy=fin?(gr.sold||0)/fin:0;
   const chista=(gr.margin||0)*buy;
   const net=chista-(gr.budget||0);
   const roas=gr.budget?(gr.sum||0)/gr.budget:0;
@@ -294,11 +297,11 @@ function campHtml(gr,cuid){
   return `<tr class="camp" data-cuid="${cuid}"><td class="name"><span class="caret">▸</span>${gr.camp} <span class="pct" style="font-weight:400">· ${n} катег.</span></td>
     <td>${fmt(gr.leads)}</td><td>${fmt(gr.approved)} <span class="pct">${apr}%</span></td>
     <td>${fmt(gr.margin)}</td>
-    <td class="${buy>=0.6?'g':(buy?'r':'')}">${gr.approved?Math.round(buy*100)+'%':"—"}</td>
+    <td class="${buy>=0.6?'g':(buy?'r':'')}">${fin?Math.round(buy*100)+'%':"—"}</td>
     <td>${gr.budget?fmt(gr.budget):"—"}</td>
     <td class="${roas>=1?'g':'r'}">${gr.budget?roas.toFixed(2)+'×':"—"}</td>
-    <td class="${roi>=0?'g':'r'}">${gr.budget?Math.round(roi*100)+'%':"—"}</td>
-    <td class="${net>=0?'g':'r'}">${gr.budget?fmt(net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
+    <td class="${roi>=0?'g':'r'}">${(gr.budget&&fin)?Math.round(roi*100)+'%':"—"}</td>
+    <td class="${net>=0?'g':'r'}">${(gr.budget&&fin)?fmt(net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
 }
 function rowHtml(r,isTot,src,sub,campId){
   if(isTot) return `<tr class="tot"><td class="name">${r.cat}</td>${cellsHtml(r)}</tr>`;
