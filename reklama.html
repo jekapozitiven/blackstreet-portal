@@ -255,21 +255,27 @@ function renderTable(f,t){
         if(!r){ r=rowsMap[rk]={key:advKey,cat:nm,camp:camp,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:new Set(),camps:new Set()}; }
         return r; };
       // 1) бюджет по кампаніях: з ads-google-catcampcost; якщо нема — стара єдина кампанія за період
+      const budgetedCamps={};   // budgetedCamps[advKey] = Set кампаній, що мали бюджет у цьому періоді
       for(const a of adv){ const advKey=a.key, nm=a.name, cc2=ccost[advKey]; let seeded=false;
+        const bset=budgetedCamps[advKey]||(budgetedCamps[advKey]=new Set());
         if(cc2&&cc2.camps){ for(const mk in cc2.camps){ const cm=cc2.camps[mk]||{}; let b=0; const dys=cm.days||{};
           for(const dd in dys){ if(inRange(dd,f,t)) b+=+dys[dd]||0; }
-          if(b>0){ ensureRow(advKey,nm,cm.camp||mk).budget+=b; seeded=true; } } }
+          if(b>0){ const cn=cm.camp||mk; ensureRow(advKey,nm,cn).budget+=b; bset.add(cn); seeded=true; } } }
         if(!seeded){ const camp=campForPeriod(src,advKey,f,t)||catchAll||"Без кампанії";
-          ensureRow(advKey,nm,camp).budget+=sumCost(g[advKey],f,t); } }
+          ensureRow(advKey,nm,camp).budget+=sumCost(g[advKey],f,t); bset.add(camp); } }
       const domCamp=advKey=>{let best=null,bv=-1; for(const rk in rowsMap){const r=rowsMap[rk]; if(r.key!==advKey)continue; if(r.budget>bv){bv=r.budget;best=r.camp;}} return best;};
-      const hasRows=advKey=>{for(const rk in rowsMap){if(rowsMap[rk].key===advKey)return true;} return false;};
-      // 2) рознести замовлення по кампаніях за артикулом (поле camp в ячейці)
+      // 2) рознести замовлення по кампаніях за товаром (поле camp в ячейці).
+      //    Кампанія заказу — ПОТОЧНА; якщо в цьому періоді в неї НЕ було бюджету на цю категорію
+      //    (кампанії тоді не існувало / вона не крутила цю категорію) — кладемо заказ у кампанію,
+      //    що реально мала бюджет тоді (найбільша). Так минуле не перефарбовується новою кампанією.
       for(const wc in orders){ const o=orders[wc], tgt=m[wc];
         if(!(tgt&&advSet.has(tgt))) continue;                 // unmapped уже враховано
         const nm=advName(tgt);
-        const dom = hasRows(tgt) ? domCamp(tgt) : (campForPeriod(src,tgt,f,t)||catchAll||"Без кампанії");
+        const dom = domCamp(tgt)||catchAll||"Без кампанії";
+        const bset = budgetedCamps[tgt];
         for(const mk in (o.camps||{})){ const cs=o.camps[mk]; const cr=cs.camp||"";
-          const r=ensureRow(tgt,nm,cr||dom||"Без кампанії");
+          const target = (cr && bset && bset.has(cr)) ? cr : dom;
+          const r=ensureRow(tgt,nm,target);
           r.leads+=cs.leads;r.approved+=cs.approved;r.sold+=(cs.sold||0);r.refused+=(cs.refused||0);r.sum+=cs.sum;r.margin+=cs.margin;r.upsSum+=cs.upsSum;
           r.wkeys.add(wc); r.camps.add(cr);
         }
