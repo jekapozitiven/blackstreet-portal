@@ -53,6 +53,8 @@
   .ocard:first-child{border-top:0}
   .oimg{width:48px;height:48px;border-radius:8px;object-fit:cover;background:#0f1216;border:1px solid var(--line);flex:none}
   .oimg.noimg{background:#0f1216}
+  .ocard.assigned{opacity:.6}
+  select.passign{margin-left:auto;background:#0f1216;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:12px;max-width:260px}
   .oinfo{min-width:0;flex:1}
   .oname{font-size:13px;line-height:1.3;margin-bottom:4px}
   .oname a{color:var(--accent);text-decoration:none} .oname a:hover{text-decoration:underline}
@@ -118,6 +120,9 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
 // GCATCAMP[src][gKey]={cat,camp,lastDate}                              — поточна кампанія категорії (авто з Google Ads)
 // ads-ord[src][day][oid]={catKey,catName,approved,sum,upsSum,margin,drop,items} — поордерна деталізація (для карток)
 let ADS = {}, GCAT = {}, MAP = {}, GCATCAMP = {}, GCATCAMPDAY = {}, GCATCAMPCOST = {};
+let PHONEORD = {}, PHONEASSIGN = {};   // ads-ord/Телефон (ручні заказы) та їх ручне призначення в кампанії
+let ALLCAMPS = [];                      // [{src,camp}] — усі кампанії для випадаючого списку
+const PHONE_SRC = "Телефон";
 let ROWUID = 0, ROWMETA = {}, ORDCACHE = {};   // ROWMETA[uid]={src,wkeys}; ORDCACHE[src]=дерево ads-ord
 // налаштування розрахунку (редагуються, зберігаються в ads-settings)
 let SETTINGS = {buyout:null, returnCost:0, zpRate:24};   // buyout% ручний (null=авто), сума повернення ₴, ставка КЦ ₴/апрув
@@ -128,7 +133,7 @@ const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,cc,ccd,ccc,st] = await Promise.all([
+  const [a,g,m,cc,ccd,ccc,st,po,pa] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
@@ -136,16 +141,21 @@ async function loadData(){
     fetch(FB+"/shop-reports/ads-google-catcampday.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-catcampcost.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-settings.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-ord/"+enc(PHONE_SRC)+".json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-phone-assign.json").then(r=>r.json()),
   ]);
   ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; GCATCAMPDAY=ccd||{}; GCATCAMPCOST=ccc||{}; ORDCACHE={};
+  PHONEORD=po||{}; PHONEASSIGN=pa||{}; ALLCAMPS=buildAllCamps();
   if(st&&typeof st==="object"){ SETTINGS={buyout:(st.buyout==null?null:+st.buyout), returnCost:+st.returnCost||0, zpRate:(st.zpRate==null?24:+st.zpRate)}; }
   // заповнити поля панелі
   el("cfgBuyout").value = SETTINGS.buyout==null?"":SETTINGS.buyout;
   el("cfgReturn").value = SETTINGS.returnCost||"";
   el("cfgZp").value = SETTINGS.zpRate==null?"":SETTINGS.zpRate;
   const [mn,mx]=bounds();
-  if(mn&&!el("from").value) el("from").value=mn;
-  if(mx&&!el("to").value) el("to").value=mx;
+  // відновити збережений період (щоб при оновленні сторінки не скидалося)
+  let sv=null; try{ sv=JSON.parse(localStorage.getItem("rek-period")||"null"); }catch(e){}
+  if(sv&&sv.from){ el("from").value=sv.from; } else if(mn&&!el("from").value){ el("from").value=mn; }
+  if(sv&&sv.to){ el("to").value=sv.to; } else if(mx&&!el("to").value){ el("to").value=mx; }
   render();
 }
 // поордерная детализация магазина (загружаем по требованию, кэшируем)
@@ -164,8 +174,27 @@ function bounds(){
 }
 function sources(){
   const s=new Set([...Object.keys(ADS),...Object.keys(GCAT)]);
+  s.delete(PHONE_SRC);   // «Телефон» — не звичайний магазин, рендериться окремою секцією
   return [...s].sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return (ia<0?9:ia)-(ib<0?9:ib);});
 }
+// усі кампанії всіх магазинів — для випадаючого списку призначення телефонних заказів
+function buildAllCamps(){
+  const out=[], seen={};
+  for(const src in GCATCAMPCOST){ const cc=GCATCAMPCOST[src]||{};
+    for(const ck in cc){ const camps=(cc[ck]&&cc[ck].camps)||{};
+      for(const mk in camps){ const cn=(camps[mk]&&camps[mk].camp)||mk; const key=src+"\u0001"+cn;
+        if(cn&&!seen[key]){ seen[key]=1; out.push({src,camp:cn}); } } } }
+  out.sort((a,b)=> a.src===b.src ? a.camp.localeCompare(b.camp,"uk") : a.src.localeCompare(b.src,"uk"));
+  return out;
+}
+// телефонні заказы за період -> масив {oid,day,...}
+function phoneInRange(f,t){
+  const out=[];
+  for(const day in PHONEORD){ if(!inRange(day,f,t))continue;
+    for(const oid in PHONEORD[day]){ const o=PHONEORD[day][oid]; if(o) out.push(Object.assign({oid,day},o)); } }
+  return out;
+}
+function phoneAssignOf(oid){ const a=PHONEASSIGN[oid]; return (a&&a.src&&a.camp)?a:null; }
 function inRange(d,f,t){ return (!f||d>=f)&&(!t||d<=t); }
 function sumCost(obj,f,t){ let s=0; for(const k in obj){ if(k==="name")continue; if(inRange(k,f,t)) s+=+obj[k]||0; } return s; }
 // кампанія категорії ЗА ПЕРІОД: та, де вона крутилась у вибрані дні (з ads-google-catcampday),
@@ -210,6 +239,7 @@ function aggCats(src,f,t){
 
 function render(){
   const f=el("from").value, t=el("to").value;
+  try{ localStorage.setItem("rek-period", JSON.stringify({from:f,to:t})); }catch(e){}
   if(el("mapView").style.display!=="none"){ renderMap(f,t); }
   else { renderTable(f,t); }
   el("status").textContent="Оновлено: "+new Date().toLocaleString("uk-UA");
@@ -221,6 +251,13 @@ function renderTable(f,t){
   ROWART={}; ROWUID=0;
   let cuidN=0;                 // наскрізний лічильник кампаній (унікальний між магазинами)
   let html="";
+  // телефонні заказы, вручну призначені в кампанії: phoneAssigned[src][camp]={agg, oids}
+  const phoneAll=phoneInRange(f,t), phoneAssigned={};
+  for(const p of phoneAll){ const a=phoneAssignOf(p.oid); if(!a)continue;
+    const bys=phoneAssigned[a.src]||(phoneAssigned[a.src]={});
+    const c=bys[a.camp]||(bys[a.camp]={leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,oids:[]});
+    c.leads++;c.approved+=p.approved||0;c.sold+=p.sold||0;c.refused+=p.refused||0;c.sum+=p.sum||0;c.margin+=p.margin||0;c.upsSum+=p.upsSum||0;c.oids.push(p.oid);
+  }
   for(const src of srcs){
     const adv=advCats(src), g=(GCAT[src]||{}), m=(MAP[src]||{}), cc=(GCATCAMP[src]||{}), ccost=(GCATCAMPCOST[src]||{});
     const orders=aggCats(src,f,t);
@@ -238,6 +275,10 @@ function renderTable(f,t){
       }
     }
     const hasUnmapped=unmapped.leads||unmapped.margin;
+    // призначені телефонні заказы цього магазину — у підсумок магазину
+    const ptot=phoneAssigned[src]||{};
+    for(const camp in ptot){ const c=ptot[camp];
+      tot.leads+=c.leads;tot.approved+=c.approved;tot.sold+=c.sold;tot.refused+=c.refused;tot.sum+=c.sum;tot.margin+=c.margin;tot.upsSum+=c.upsSum; }
     grand.leads+=tot.leads;grand.approved+=tot.approved;grand.sold+=tot.sold;grand.refused+=tot.refused;grand.margin+=tot.margin;grand.budget+=tot.budget;grand.ups+=tot.upsSum;
     const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
     const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,sold:tot.sold,refused:tot.refused,margin:tot.margin,budget:tot.budget,sum:tot.sum,upsSum:tot.upsSum},true);
@@ -280,6 +321,12 @@ function renderTable(f,t){
           r.wkeys.add(wc); r.camps.add(cr);
         }
       }
+      // 2б) телефонні заказы, призначені в кампанії цього магазину -> окремий рядок «📞 Телефонні»
+      for(const camp in ptot){ const c=ptot[camp];
+        const r=ensureRow("_phone","📞 Телефонні замовлення",camp);
+        r.leads+=c.leads;r.approved+=c.approved;r.sold+=c.sold;r.refused+=c.refused;r.sum+=c.sum;r.margin+=c.margin;r.upsSum+=c.upsSum;
+        r.phoneOids=(r.phoneOids||[]).concat(c.oids);
+      }
       // 3) групувати рядки за кампанією
       const rowsArr=Object.values(rowsMap).map(r=>({...r,wkeys:[...r.wkeys],camps:[...r.camps]}));
       const groups={};
@@ -311,6 +358,7 @@ function renderTable(f,t){
         <th>Викуп %</th><th>Бюджет ₴</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
       </tr></thead><tbody>${body}</tbody></table></div>`;
   }
+  html+=phoneSectionHtml(f,t,phoneAll);
   const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
   const gd=calcNet({approved:grand.approved,sold:grand.sold,refused:grand.refused,margin:grand.margin,budget:grand.budget});
   el("kpis").innerHTML=`
@@ -322,6 +370,54 @@ function renderTable(f,t){
   el("shops").innerHTML=html||"<div class='note'>Немає даних.</div>";
   attachExpand();
   attachCampToggle();
+  attachPhoneAssign();
+}
+// секція «📞 Заказы по телефону»: усі ручні заказы MyDrop з випадаючим списком призначення в кампанію
+function phoneSectionHtml(f,t,phoneAll){
+  if(!phoneAll||!phoneAll.length) return "";
+  const un=phoneAll.filter(p=>!phoneAssignOf(p.oid)).length;
+  const opts=['<option value="">— перенести в кампанію —</option>']
+    .concat(ALLCAMPS.map((c,i)=>`<option value="${i}">${c.src.replace('Сайт-','').replace('Хор-','')}: ${c.camp}</option>`)).join("");
+  const cards=phoneAll.sort((a,b)=>a.day<b.day?1:a.day>b.day?-1:0).map(p=>phoneCardHtml(p,opts)).join("");
+  return `<div class="shop"><h2>📞 Заказы по телефону
+      <span class="t">${fmt(phoneAll.length)} заказ(ів) · без кампанії <b>${fmt(un)}</b></span></h2>
+    <div class="note" style="margin:0 2px 8px">Оберіть кампанію для кожного заказу — він порахується в ній. Магазин визначається кампанією.</div>
+    ${cards}</div>`;
+}
+function phoneCardHtml(o,opts){
+  const it=(o.items&&o.items[0])||{};
+  const img=it.img?`<img class="oimg" src="${it.img}" loading="lazy" onerror="this.classList.add('noimg');this.removeAttribute('src')">`:`<div class="oimg noimg"></div>`;
+  const nm=(o.items||[]).map(x=>x.name||x.sku||"товар").join(", ")||o.catName||"—";
+  const hasM=o.margin&&o.margin>0;
+  const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
+  const a=phoneAssignOf(o.oid);
+  let sel=opts;
+  if(a){ const i=ALLCAMPS.findIndex(c=>c.src===a.src&&c.camp===a.camp);
+    if(i>=0) sel=opts.replace(`value="${i}"`,`value="${i}" selected`); }
+  const tag=a?`<span class="ap g" title="призначено">→ ${a.camp}</span>`:"";
+  return `<div class="ocard${a?' assigned':''}">${img}<div class="oinfo">
+    <div class="oname">${nm}</div>
+    <div class="omet">
+      ${o.ext?`<span class="onum">№ ${o.ext}</span>`:""}
+      <span>продажна <b>${fmt(o.sum)}</b> ₴</span>
+      <span>дроп <b>${o.approved?fmt(o.drop):"—"}</b></span>
+      <span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>
+      ${ap}<span>${o.day}</span>${tag}
+      <select class="passign" data-oid="${o.oid}">${sel}</select>
+    </div>
+  </div></div>`;
+}
+function attachPhoneAssign(){
+  el("shops").querySelectorAll('select.passign').forEach(s=>{
+    s.onchange=async()=>{
+      const oid=s.dataset.oid, v=s.value;
+      const assign=(v==="")?null:{src:ALLCAMPS[+v].src, camp:ALLCAMPS[+v].camp};
+      PHONEASSIGN[oid]=assign||{};
+      try{ await fetch(FB+"/shop-reports/ads-phone-assign/"+enc(oid)+".json",
+        {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(assign)}); }catch(e){}
+      render();
+    };
+  });
 }
 function attachCampToggle(){
   el("shops").querySelectorAll('tr.camp').forEach(tr=>{
@@ -393,7 +489,7 @@ function rowHtml(r,isTot,src,sub,campId){
   const dc=campId?` data-camp="${campId}"`:"";
   const hid=campId?' style="display:none"':"";
   if(!(r.leads>0)) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
-  const uid="r"+(ROWUID++); ROWMETA[uid]={src, wkeys:(r.wkeys||[]), camps:(Array.isArray(r.camps)?r.camps:null)};
+  const uid="r"+(ROWUID++); ROWMETA[uid]={src, wkeys:(r.wkeys||[]), camps:(Array.isArray(r.camps)?r.camps:null), phoneOids:(r.phoneOids&&r.phoneOids.length?r.phoneOids:null)};
   const main=`<tr class="${cls}"${dc}${hid}><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
   const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="12"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
   return main+detail;
@@ -434,12 +530,18 @@ async function fillOrders(uid){
   const meta=ROWMETA[uid]; const box=el("box-"+uid); if(!meta||!box)return;
   box.innerHTML=`<span class="note">Завантаження…</span>`;
   const f=el("from").value, t=el("to").value;
-  const tree=await loadOrders(meta.src); const wk=new Set(meta.wkeys);
-  const camps=Array.isArray(meta.camps)?new Set(meta.camps):null;   // null = всі кампанії (unmapped/стара таблиця)
   const rows=[];
-  for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
-    for(const oid in ords){ const o=ords[oid];
-      if(o&&wk.has(o.catKey)&&(!camps||camps.has(o.camp||""))) rows.push(Object.assign({day},o)); } }
+  if(meta.phoneOids){   // рядок «📞 Телефонні» — беремо призначені телефонні заказы
+    const set=new Set(meta.phoneOids);
+    for(const day in PHONEORD){ if(!inRange(day,f,t))continue; const ords=PHONEORD[day];
+      for(const oid in ords){ if(set.has(oid)&&ords[oid]) rows.push(Object.assign({day},ords[oid])); } }
+  } else {
+    const tree=await loadOrders(meta.src); const wk=new Set(meta.wkeys);
+    const camps=Array.isArray(meta.camps)?new Set(meta.camps):null;   // null = всі кампанії (unmapped/стара таблиця)
+    for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
+      for(const oid in ords){ const o=ords[oid];
+        if(o&&wk.has(o.catKey)&&(!camps||camps.has(o.camp||""))) rows.push(Object.assign({day},o)); } }
+  }
   rows.sort((a,b)=> a.day<b.day?1:a.day>b.day?-1:0);
   box.innerHTML = rows.length
     ? rows.map(cardHtml).join("")+`<div class="note" style="margin-top:6px">${rows.length} заказ(ів) за період</div>`
