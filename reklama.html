@@ -351,14 +351,25 @@ function renderTable(f,t){
       if(hasUnmapped) rows.push(unmapped);
       body=rows.map(r=>rowHtml(r,false,src)).join("")+totRow;
     }
+    // телефонні заказы ЦЬОГО магазину (визначені за джерелом orderSource) — картки з вибором кампанії
+    const shopPhones=phoneAll.filter(p=>phoneShopMatches(src,p.shop));
+    let phoneBlock="";
+    if(shopPhones.length){
+      const popts=phoneOptsForSrc(src);
+      const un=shopPhones.filter(p=>!phoneAssignOf(p.oid)).length;
+      const cards=shopPhones.sort((a,b)=>a.day<b.day?1:a.day>b.day?-1:0).map(p=>phoneCardHtml(p,popts)).join("");
+      phoneBlock=`<div class="note" style="margin:10px 2px 6px">📞 Заказы по телефону: <b>${fmt(shopPhones.length)}</b> · без кампанії <b>${fmt(un)}</b>. Оберіть кампанію для кожного.</div>${cards}`;
+    }
     html+=`<div class="shop"><h2>${src}
         <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
         <th>Викуп %</th><th>Бюджет ₴</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
-      </tr></thead><tbody>${body}</tbody></table></div>`;
+      </tr></thead><tbody>${body}</tbody></table>${phoneBlock}</div>`;
   }
-  html+=phoneSectionHtml(f,t,phoneAll);
+  // внизу — лише заказы, де магазин НЕ визначено (джерело в MyDrop ще не відмічено)
+  const phoneUnknown=phoneAll.filter(p=>!srcs.some(s=>phoneShopMatches(s,p.shop)));
+  html+=phoneSectionHtml(f,t,phoneUnknown);
   const gpct=grand.leads?Math.round(grand.approved/grand.leads*100):0;
   const gd=calcNet({approved:grand.approved,sold:grand.sold,refused:grand.refused,margin:grand.margin,budget:grand.budget});
   el("kpis").innerHTML=`
@@ -372,16 +383,31 @@ function renderTable(f,t){
   attachCampToggle();
   attachPhoneAssign();
 }
-// секція «📞 Заказы по телефону»: усі ручні заказы MyDrop з випадаючим списком призначення в кампанію
+// чи належить телефонний заказ (за orderSource-магазином) цьому джерелу-магазину
+function phoneShopMatches(src,shop){
+  if(!shop) return false;
+  const s=(src||"").toLowerCase(), h=(shop||"").toLowerCase();
+  if(h.indexOf("black")>=0||h.indexOf("блек")>=0||h.indexOf("блэк")>=0) return s.indexOf("black")>=0;
+  if(h.indexOf("bonna")>=0||h.indexOf("бонна")>=0) return s.indexOf("bonna")>=0;
+  if(h.indexOf("blink")>=0||h.indexOf("блін")>=0||h.indexOf("блин")>=0) return s.indexOf("blink")>=0;
+  return false;
+}
+// опції випадаючого списку — лише кампанії цього магазину (value = індекс у ALLCAMPS)
+function phoneOptsForSrc(src){
+  let o='<option value="">— перенести в кампанію —</option>';
+  ALLCAMPS.forEach((c,i)=>{ if(c.src===src) o+=`<option value="${i}">${c.camp}</option>`; });
+  return o;
+}
+// нижня секція — лише заказы з невизначеним магазином (джерело в MyDrop ще не відмічено)
 function phoneSectionHtml(f,t,phoneAll){
   if(!phoneAll||!phoneAll.length) return "";
   const un=phoneAll.filter(p=>!phoneAssignOf(p.oid)).length;
   const opts=['<option value="">— перенести в кампанію —</option>']
     .concat(ALLCAMPS.map((c,i)=>`<option value="${i}">${c.src.replace('Сайт-','').replace('Хор-','')}: ${c.camp}</option>`)).join("");
   const cards=phoneAll.sort((a,b)=>a.day<b.day?1:a.day>b.day?-1:0).map(p=>phoneCardHtml(p,opts)).join("");
-  return `<div class="shop"><h2>📞 Заказы по телефону
+  return `<div class="shop"><h2>📞 Заказы по телефону — магазин не визначено
       <span class="t">${fmt(phoneAll.length)} заказ(ів) · без кампанії <b>${fmt(un)}</b></span></h2>
-    <div class="note" style="margin:0 2px 8px">Оберіть кампанію для кожного заказу — він порахується в ній. Магазин визначається кампанією.</div>
+    <div class="note" style="margin:0 2px 8px">Відмітьте «Джерело заказу» (Сайт-Блек / Сайт-Бонна / Хор-Blink) у MyDrop — і заказ переїде у свій магазин. Або оберіть кампанію вручну тут.</div>
     ${cards}</div>`;
 }
 function phoneCardHtml(o,opts){
