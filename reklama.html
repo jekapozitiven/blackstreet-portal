@@ -54,7 +54,7 @@
   .oimg{width:48px;height:48px;border-radius:8px;object-fit:cover;background:#0f1216;border:1px solid var(--line);flex:none}
   .oimg.noimg{background:#0f1216}
   .ocard.assigned{opacity:.6}
-  select.passign{margin-left:auto;background:#0f1216;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:12px;max-width:260px}
+  select.passign,select.cassign{margin-left:auto;background:#0f1216;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:12px;max-width:260px}
   .oinfo{min-width:0;flex:1}
   .oname{font-size:13px;line-height:1.3;margin-bottom:4px}
   .oname a{color:var(--accent);text-decoration:none} .oname a:hover{text-decoration:underline}
@@ -121,6 +121,7 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
 // ads-ord[src][day][oid]={catKey,catName,approved,sum,upsSum,margin,drop,items} — поордерна деталізація (для карток)
 let ADS = {}, GCAT = {}, MAP = {}, GCATCAMP = {}, GCATCAMPDAY = {}, GCATCAMPCOST = {};
 let PHONEORD = {}, PHONEASSIGN = {};   // ads-ord/Телефон (ручні заказы) та їх ручне призначення в кампанії
+let CATASSIGN = {};                     // ads-catcamp-assign[src][catKey]=назва кампанії — ручне призначення категорій «без реклами»
 let ALLCAMPS = [];                      // [{src,camp}] — усі кампанії для випадаючого списку
 const PHONE_SRC = "Телефон";
 let ROWUID = 0, ROWMETA = {}, ORDCACHE = {};   // ROWMETA[uid]={src,wkeys}; ORDCACHE[src]=дерево ads-ord
@@ -133,7 +134,7 @@ const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,cc,ccd,ccc,st,po,pa] = await Promise.all([
+  const [a,g,m,cc,ccd,ccc,st,po,pa,ca] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
@@ -143,9 +144,10 @@ async function loadData(){
     fetch(FB+"/shop-reports/ads-settings.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-ord/"+enc(PHONE_SRC)+".json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-phone-assign.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-catcamp-assign.json").then(r=>r.json()),
   ]);
   ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; GCATCAMPDAY=ccd||{}; GCATCAMPCOST=ccc||{}; ORDCACHE={};
-  PHONEORD=po||{}; PHONEASSIGN=pa||{}; ALLCAMPS=buildAllCamps();
+  PHONEORD=po||{}; PHONEASSIGN=pa||{}; CATASSIGN=(ca||{}); ALLCAMPS=buildAllCamps();
   if(st&&typeof st==="object"){ SETTINGS={buyout:(st.buyout==null?null:+st.buyout), returnCost:+st.returnCost||0, zpRate:(st.zpRate==null?24:+st.zpRate)}; }
   // заповнити поля панелі
   el("cfgBuyout").value = SETTINGS.buyout==null?"":SETTINGS.buyout;
@@ -283,7 +285,9 @@ function renderTable(f,t){
     const tpct=tot.leads?Math.round(tot.approved/tot.leads*100):0;
     const totRow=rowHtml({cat:"Разом",leads:tot.leads,approved:tot.approved,sold:tot.sold,refused:tot.refused,margin:tot.margin,budget:tot.budget,sum:tot.sum,upsSum:tot.upsSum},true);
 
-    let body;
+    let body, leftover=[];   // leftover — категорії «без реклами», що лишились без кампанії (для ручного вибору)
+    // усі кампанії цього магазину — для авто-маршрутизації заказів «без реклами»
+    const shopCamps=new Set(ALLCAMPS.filter(c=>c.src===src).map(c=>c.camp));
     if(!adv.length){
       body=`<tr><td class="empty" colspan="12">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
     } else if(grouped){
@@ -327,6 +331,29 @@ function renderTable(f,t){
         r.leads+=c.leads;r.approved+=c.approved;r.sold+=c.sold;r.refused+=c.refused;r.sum+=c.sum;r.margin+=c.margin;r.upsSum+=c.upsSum;
         r.phoneOids=(r.phoneOids||[]).concat(c.oids);
       }
+      // 2в) заказы «без реклами»: якщо кампанія визначена по товару (авто) або призначена вручну —
+      //     кладемо в цю кампанію; інакше лишаємо у leftover (ручний вибір під таблицею).
+      if(catchAll) shopCamps.add(catchAll);
+      const cassign=CATASSIGN[src]||{};
+      for(const wc in orders){ const o=orders[wc], tgt=m[wc];
+        if(tgt&&advSet.has(tgt)) continue;            // рекламовані категорії вже враховані в кроці 2
+        const catNm=o.cat||wc;
+        let leftCell=null;
+        for(const mk in (o.camps||{})){ const cs=o.camps[mk]; const cr=cs.camp||"";
+          let target=null;
+          if(cr && shopCamps.has(cr)) target=cr;      // авто: кампанія визначена по назві товару
+          else if(cassign[wc]) target=cassign[wc];    // ручне призначення категорії
+          if(target){
+            const r=ensureRow("_x_"+wc,catNm,target);
+            r.leads+=cs.leads;r.approved+=cs.approved;r.sold+=(cs.sold||0);r.refused+=(cs.refused||0);r.sum+=cs.sum;r.margin+=cs.margin;r.upsSum+=cs.upsSum;
+            r.wkeys.add(wc); r.camps.add(cr);
+          } else {
+            leftCell=leftCell||{wc,cat:catNm,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0};
+            leftCell.leads+=cs.leads;leftCell.approved+=cs.approved;leftCell.sold+=(cs.sold||0);leftCell.refused+=(cs.refused||0);leftCell.sum+=cs.sum;leftCell.margin+=cs.margin;leftCell.upsSum+=cs.upsSum;
+          }
+        }
+        if(leftCell) leftover.push(leftCell);
+      }
       // 3) групувати рядки за кампанією
       const rowsArr=Object.values(rowsMap).map(r=>({...r,wkeys:[...r.wkeys],camps:[...r.camps]}));
       const groups={};
@@ -339,7 +366,12 @@ function renderTable(f,t){
         gr.rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
         body+=campHtml(gr,cuid)+gr.rows.map(r=>rowHtml(r,false,src,true,cuid)).join("");
       }
-      if(hasUnmapped) body+=rowHtml(unmapped,false,src,false);
+      // «Замовлення без реклами» — лише те, що лишилось без кампанії (leftover)
+      if(leftover.length){
+        const na={key:"_noads",cat:"Замовлення без реклами",leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:[],camps:null};
+        for(const lc of leftover){ na.leads+=lc.leads;na.approved+=lc.approved;na.sold+=lc.sold;na.refused+=lc.refused;na.sum+=lc.sum;na.margin+=lc.margin;na.upsSum+=lc.upsSum;na.wkeys.push(lc.wc); }
+        if(na.leads||na.margin) body+=rowHtml(na,false,src,false);
+      }
       body+=totRow;
     } else {
       // без даних кампаній — стара плоска таблиця
@@ -360,12 +392,22 @@ function renderTable(f,t){
       const cards=shopPhones.sort((a,b)=>a.day<b.day?1:a.day>b.day?-1:0).map(p=>phoneCardHtml(p,popts)).join("");
       phoneBlock=`<div class="note" style="margin:10px 2px 6px">📞 Заказы по телефону: <b>${fmt(shopPhones.length)}</b> · без кампанії <b>${fmt(un)}</b>. Оберіть кампанію для кожного.</div>${cards}`;
     }
+    // заказы «без реклами» без визначеної кампанії — ручний вибір кампанії по категорії
+    let catBlock="";
+    if(leftover.length){
+      const copts=catOptsForSrc(src);
+      const cards=leftover.sort((a,b)=>b.leads-a.leads).map(lc=>`<div class="ocard"><div class="oimg noimg"></div><div class="oinfo">
+        <div class="oname">${lc.cat}</div>
+        <div class="omet"><span>заявок <b>${fmt(lc.leads)}</b></span><span>апрув <b>${fmt(lc.approved)}</b></span><span>маржа <b>${fmt(lc.margin)}</b></span>
+        <select class="cassign" data-src="${src}" data-cat="${lc.wc}">${copts}</select></div></div>`).join("");
+      catBlock=`<div class="note" style="margin:10px 2px 6px">🏷️ Замовлення без реклами — кампанія не визначилась по товару. Оберіть кампанію для категорії (усі заказы цієї категорії перейдуть у неї).</div>${cards}`;
+    }
     html+=`<div class="shop"><h2>${src}
         <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
         <th>Викуп %</th><th>Бюджет ₴</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
-      </tr></thead><tbody>${body}</tbody></table>${phoneBlock}</div>`;
+      </tr></thead><tbody>${body}</tbody></table>${catBlock}${phoneBlock}</div>`;
   }
   // внизу — лише заказы, де магазин НЕ визначено (джерело в MyDrop ще не відмічено)
   const phoneUnknown=phoneAll.filter(p=>!srcs.some(s=>phoneShopMatches(s,p.shop)));
@@ -382,6 +424,7 @@ function renderTable(f,t){
   attachExpand();
   attachCampToggle();
   attachPhoneAssign();
+  attachCatAssign();
 }
 // чи належить телефонний заказ (за orderSource-магазином) цьому джерелу-магазину
 function phoneShopMatches(src,shop){
@@ -396,6 +439,12 @@ function phoneShopMatches(src,shop){
 function phoneOptsForSrc(src){
   let o='<option value="">— перенести в кампанію —</option>';
   ALLCAMPS.forEach((c,i)=>{ if(c.src===src) o+=`<option value="${i}">${c.camp}</option>`; });
+  return o;
+}
+// опції для категорій «без реклами» — value = назва кампанії цього магазину
+function catOptsForSrc(src){
+  let o='<option value="">— перенести в кампанію —</option>';
+  ALLCAMPS.forEach(c=>{ if(c.src===src){ const nm=c.camp.replace(/"/g,'&quot;'); o+=`<option value="${nm}">${c.camp}</option>`; } });
   return o;
 }
 // нижня секція — лише заказы з невизначеним магазином (джерело в MyDrop ще не відмічено)
@@ -441,6 +490,18 @@ function attachPhoneAssign(){
       PHONEASSIGN[oid]=assign||{};
       try{ await fetch(FB+"/shop-reports/ads-phone-assign/"+enc(oid)+".json",
         {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(assign)}); }catch(e){}
+      render();
+    };
+  });
+}
+function attachCatAssign(){
+  el("shops").querySelectorAll('select.cassign').forEach(s=>{
+    s.onchange=async()=>{
+      const src=s.dataset.src, cat=s.dataset.cat, v=s.value;
+      CATASSIGN[src]=CATASSIGN[src]||{};
+      if(v) CATASSIGN[src][cat]=v; else delete CATASSIGN[src][cat];
+      try{ await fetch(FB+"/shop-reports/ads-catcamp-assign/"+enc(src)+"/"+enc(cat)+".json",
+        {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(v||null)}); }catch(e){}
       render();
     };
   });
