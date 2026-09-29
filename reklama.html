@@ -399,7 +399,7 @@ function renderTable(f,t){
       const cards=leftover.sort((a,b)=>b.leads-a.leads).map(lc=>`<div class="ocard"><div class="oimg noimg"></div><div class="oinfo">
         <div class="oname">${lc.cat}</div>
         <div class="omet"><span>заявок <b>${fmt(lc.leads)}</b></span><span>апрув <b>${fmt(lc.approved)}</b></span><span>маржа <b>${fmt(lc.margin)}</b></span>
-        <select class="cassign" data-src="${src}" data-cat="${lc.wc}">${copts}</select></div></div>`).join("");
+        <select class="cassign" data-src="${src}" data-cat="${lc.wc}">${copts}</select></div></div></div>`).join("");
       catBlock=`<div class="note" style="margin:10px 2px 6px">🏷️ Замовлення без реклами — кампанія не визначилась по товару. Оберіть кампанію для категорії (усі заказы цієї категорії перейдуть у неї).</div>${cards}`;
     }
     html+=`<div class="shop"><h2>${src}
