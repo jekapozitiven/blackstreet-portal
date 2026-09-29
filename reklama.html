@@ -477,6 +477,7 @@ function phoneCardHtml(o,opts){
       <span>продажна <b>${fmt(o.sum)}</b> ₴</span>
       <span>дроп <b>${o.approved?fmt(o.drop):"—"}</b></span>
       <span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>
+      ${o.phoneNum?`<span class="onum">📱 ${o.phoneNum}</span>`:""}
       ${ap}<span>${o.day}</span>${tag}
       <select class="passign" data-oid="${o.oid}">${sel}</select>
     </div>
