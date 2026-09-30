@@ -185,10 +185,14 @@ function sources(){
 // усі кампанії всіх магазинів — для випадаючого списку призначення телефонних заказів
 function buildAllCamps(){
   const out=[], seen={};
+  const add=(src,cn)=>{ if(!cn)return; const key=src+"\u0001"+cn; if(!seen[key]){ seen[key]=1; out.push({src,camp:cn}); } };
+  // 1) з бюджетів по кампаніях
   for(const src in GCATCAMPCOST){ const cc=GCATCAMPCOST[src]||{};
     for(const ck in cc){ const camps=(cc[ck]&&cc[ck].camps)||{};
-      for(const mk in camps){ const cn=(camps[mk]&&camps[mk].camp)||mk; const key=src+"\u0001"+cn;
-        if(cn&&!seen[key]){ seen[key]=1; out.push({src,camp:cn}); } } } }
+      for(const mk in camps){ add(src,(camps[mk]&&camps[mk].camp)||mk); } } }
+  // 2) з поточних кампаній категорій (повніший список — не всі кампанії мають рядок у catcampcost)
+  for(const src in GCATCAMP){ const cc=GCATCAMP[src]||{};
+    for(const ck in cc){ add(src,(cc[ck]&&cc[ck].camp)); } }
   out.sort((a,b)=> a.src===b.src ? a.camp.localeCompare(b.camp,"uk") : a.src.localeCompare(b.src,"uk"));
   return out;
 }
@@ -410,15 +414,17 @@ function renderTable(f,t){
         const ords=catOrders(src,lc.wc,f,t);
         const it0=(ords[0]&&ords[0].items&&ords[0].items[0])||{};
         const img=it0.img?`<img class="oimg" src="${it0.img}" loading="lazy" onerror="this.classList.add('noimg');this.removeAttribute('src')">`:`<div class="oimg noimg"></div>`;
-        // рядки заказів: № + назви товарів
+        // рядки заказів: № + назва товару + продажна/дроп/маржа/статус
         const lines=ords.map(o=>{
           const nm=(o.items||[]).map(x=>x.name||x.sku||"товар").join(", ")||o.catName||"—";
-          return `<div class="oname">${o.ext?`<span class="onum">№ ${o.ext}</span> `:""}${nm}</div>`;
+          const hasM=o.margin&&o.margin>0;
+          const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
+          return `<div class="oname">${o.ext?`<span class="onum">№ ${o.ext}</span> `:""}${nm}</div>
+            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span></div>`;
         }).join("")||`<div class="oname">${lc.cat}</div>`;
         return `<div class="ocard">${img}<div class="oinfo">
           ${lines}
-          <div class="omet"><span>${lc.cat}</span><span>заявок <b>${fmt(lc.leads)}</b></span><span>апрув <b>${fmt(lc.approved)}</b></span><span>маржа <b class="${lc.margin>0?'g':''}">${fmt(lc.margin)}</b></span>
-          <select class="cassign" data-src="${src}" data-cat="${lc.wc}">${copts}</select></div></div></div>`;
+          <div class="omet"><span style="color:var(--orange)">${lc.cat}</span><select class="cassign" data-src="${src}" data-cat="${lc.wc}">${copts}</select></div></div></div>`;
       }).join("");
       catBlock=`<div class="note" style="margin:10px 2px 6px">🏷️ Замовлення без реклами — кампанія не визначилась по товару. Оберіть кампанію для категорії (усі заказы цієї категорії перейдуть у неї).</div>${cards}`;
     }
