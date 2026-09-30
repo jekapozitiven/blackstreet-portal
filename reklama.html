@@ -142,12 +142,15 @@ async function loadData(){
     fetch(FB+"/shop-reports/ads-google-catcampday.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-catcampcost.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-settings.json").then(r=>r.json()),
-    fetch(FB+"/shop-reports/ads-ord/"+enc(PHONE_SRC)+".json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-ord.json").then(r=>r.json()),   // весь дерево пер-ордерів (усі магазини + Телефон)
     fetch(FB+"/shop-reports/ads-phone-assign.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-catcamp-assign.json").then(r=>r.json()),
   ]);
-  ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; GCATCAMPDAY=ccd||{}; GCATCAMPCOST=ccc||{}; ORDCACHE={};
-  PHONEORD=po||{}; PHONEASSIGN=pa||{}; CATASSIGN=(ca||{}); ALLCAMPS=buildAllCamps();
+  ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; GCATCAMPDAY=ccd||{}; GCATCAMPCOST=ccc||{};
+  const aoTree=po||{};
+  ORDCACHE=aoTree;                       // пер-ордери кешуємо одразу (щоб показати номери заказів «без реклами»)
+  PHONEORD=aoTree[PHONE_SRC]||{};
+  PHONEASSIGN=pa||{}; CATASSIGN=(ca||{}); ALLCAMPS=buildAllCamps();
   if(st&&typeof st==="object"){ SETTINGS={buyout:(st.buyout==null?null:+st.buyout), returnCost:+st.returnCost||0, zpRate:(st.zpRate==null?24:+st.zpRate)}; }
   // заповнити поля панелі
   el("cfgBuyout").value = SETTINGS.buyout==null?"":SETTINGS.buyout;
@@ -197,6 +200,13 @@ function phoneInRange(f,t){
   return out;
 }
 function phoneAssignOf(oid){ const a=PHONEASSIGN[oid]; return (a&&a.src&&a.camp)?a:null; }
+// пер-ордери магазину за категорією та періодом (з ORDCACHE) — щоб показати номери заказів «без реклами»
+function catOrders(src,wc,f,t){
+  const tree=ORDCACHE[src]||{}, out=[];
+  for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
+    for(const oid in ords){ const o=ords[oid]; if(o && o.catKey===wc) out.push(Object.assign({oid,day},o)); } }
+  return out;
+}
 function inRange(d,f,t){ return (!f||d>=f)&&(!t||d<=t); }
 function sumCost(obj,f,t){ let s=0; for(const k in obj){ if(k==="name")continue; if(inRange(k,f,t)) s+=+obj[k]||0; } return s; }
 // кампанія категорії ЗА ПЕРІОД: та, де вона крутилась у вибрані дні (з ads-google-catcampday),
@@ -396,10 +406,20 @@ function renderTable(f,t){
     let catBlock="";
     if(leftover.length){
       const copts=catOptsForSrc(src);
-      const cards=leftover.sort((a,b)=>b.leads-a.leads).map(lc=>`<div class="ocard"><div class="oimg noimg"></div><div class="oinfo">
-        <div class="oname">${lc.cat}</div>
-        <div class="omet"><span>заявок <b>${fmt(lc.leads)}</b></span><span>апрув <b>${fmt(lc.approved)}</b></span><span>маржа <b>${fmt(lc.margin)}</b></span>
-        <select class="cassign" data-src="${src}" data-cat="${lc.wc}">${copts}</select></div></div></div>`).join("");
+      const cards=leftover.sort((a,b)=>b.leads-a.leads).map(lc=>{
+        const ords=catOrders(src,lc.wc,f,t);
+        const it0=(ords[0]&&ords[0].items&&ords[0].items[0])||{};
+        const img=it0.img?`<img class="oimg" src="${it0.img}" loading="lazy" onerror="this.classList.add('noimg');this.removeAttribute('src')">`:`<div class="oimg noimg"></div>`;
+        // рядки заказів: № + назви товарів
+        const lines=ords.map(o=>{
+          const nm=(o.items||[]).map(x=>x.name||x.sku||"товар").join(", ")||o.catName||"—";
+          return `<div class="oname">${o.ext?`<span class="onum">№ ${o.ext}</span> `:""}${nm}</div>`;
+        }).join("")||`<div class="oname">${lc.cat}</div>`;
+        return `<div class="ocard">${img}<div class="oinfo">
+          ${lines}
+          <div class="omet"><span>${lc.cat}</span><span>заявок <b>${fmt(lc.leads)}</b></span><span>апрув <b>${fmt(lc.approved)}</b></span><span>маржа <b class="${lc.margin>0?'g':''}">${fmt(lc.margin)}</b></span>
+          <select class="cassign" data-src="${src}" data-cat="${lc.wc}">${copts}</select></div></div></div>`;
+      }).join("");
       catBlock=`<div class="note" style="margin:10px 2px 6px">🏷️ Замовлення без реклами — кампанія не визначилась по товару. Оберіть кампанію для категорії (усі заказы цієї категорії перейдуть у неї).</div>${cards}`;
     }
     html+=`<div class="shop"><h2>${src}
