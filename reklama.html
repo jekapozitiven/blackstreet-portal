@@ -7,91 +7,121 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>BBB CLUB // Реклама</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F7F7F5; --card:#ffffff; --line:#E5E5E3; --text:#111; --muted:#999;
-    --accent:#1F6FEB; --green:#0E7C5A; --red:#C2453B; --orange:#F97316; --mono:'JetBrains Mono',ui-monospace,monospace;
+    --bg:#F7F7F5; --card:#ffffff; --line:#E8E8E6; --line2:#E5E5E3; --text:#111; --muted:#8A8A8A; --faint:#C7C7C5;
+    --accent:#1F6FEB; --green:#0E7C5A; --red:#C2453B; --orange:#E8820C;
+    --g-bg:rgba(14,124,90,.09); --o-bg:rgba(232,130,12,.11); --r-bg:rgba(194,69,59,.08); --bd-bg:rgba(31,111,235,.08);
+    --mono:'JetBrains Mono',ui-monospace,monospace; --shadow:0 1px 2px rgba(17,17,17,.04),0 4px 16px rgba(17,17,17,.05);
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
-  .wrap{max-width:1280px;margin:0 auto;padding:18px}
-  h1{font-size:20px;margin:0 0 2px} .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
-  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
-  .bar label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
-  input[type=date]{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px}
-  button{background:var(--accent);border:0;color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
-  button.ghost{background:var(--card);border:1px solid var(--line);color:var(--text)}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1340px;margin:0 auto;padding:22px 24px 40px}
+  .back{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;transition:color .15s}
+  .back:hover{color:var(--accent)}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:12.5px;line-height:1.5;margin-bottom:20px;max-width:760px}
+
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+  .seg{display:inline-flex;gap:2px;background:#EDEDEB;border:1px solid var(--line);border-radius:11px;padding:3px}
+  .bar label{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  input[type=date]{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:7px 9px;font-size:13px;font-family:var(--mono);transition:border-color .15s}
+  input[type=date]:focus{outline:0;border-color:var(--accent)}
+  button{background:var(--accent);border:0;color:#fff;border-radius:10px;padding:9px 16px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;transition:.15s;box-shadow:0 1px 2px rgba(31,111,235,.25)}
+  button:hover{filter:brightness(1.07)}
+  button.ghost{background:var(--card);border:1px solid var(--line);color:var(--text);box-shadow:none}
+  button.ghost:hover{border-color:var(--faint);background:#fafafa}
+  .seg button.ghost{background:transparent;border:0;border-radius:8px;padding:7px 14px;color:var(--muted);font-weight:600}
+  .seg button.ghost:hover{background:rgba(0,0,0,.04);color:var(--text)}
+  .seg button.ghost.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.09)}
   button.ghost.on{border-color:var(--accent);color:var(--accent)}
-  select{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:5px 7px;font-size:12px;max-width:230px}
-  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
-  .kpi .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
-  .kpi .v{font-size:20px;font-weight:700;margin-top:4px;font-family:var(--mono)}
-  .shop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 6px 10px;margin-bottom:16px;overflow-x:auto}
-  .shop h2{font-size:15px;margin:10px 12px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  select{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 7px;font-size:12px;max-width:230px;font-family:inherit}
+
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--faint)}
+  .kpi.k-ok::before{background:var(--green)} .kpi.k-bd::before{background:var(--accent)} .kpi.k-amb::before{background:var(--orange)}
+  .kpi .l{color:var(--muted);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  .kpi .v{font-size:23px;font-weight:800;margin-top:6px;font-family:var(--mono);letter-spacing:-.02em;line-height:1.1}
+
+  .shop{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:4px 4px 8px;margin-bottom:18px;overflow-x:auto;box-shadow:var(--shadow)}
+  .shop h2{font-size:16px;font-weight:700;margin:14px 16px 10px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
   .shop h2 .t{color:var(--muted);font-size:12.5px;font-weight:500;font-family:var(--mono)}
   .shop h2 .t b{color:var(--text);font-weight:700}
   .shop h2 .t b.g{color:var(--green)} .shop h2 .t b.bd{color:var(--accent)}
-  table{width:100%;border-collapse:collapse;min-width:820px}
-  th,td{padding:7px 10px;text-align:right;border-top:1px solid var(--line);font-family:var(--mono);font-size:13px;white-space:nowrap}
-  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-top:0}
+  table{width:100%;border-collapse:collapse;min-width:860px}
+  th,td{padding:9px 11px;text-align:right;border-top:1px solid var(--line);font-family:var(--mono);font-size:13px;white-space:nowrap}
+  th{position:sticky;top:0;z-index:2;background:#F6F6F4;color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;border-top:0;border-bottom:1px solid var(--line);font-family:inherit}
   td.name,th.name{text-align:left;font-family:inherit;white-space:normal}
-  tr.tot td{border-top:2px solid var(--line);font-weight:700}
+  tbody tr:not(.detail):not(.camp):hover td{background:#FAFAF8}
+  tr.tot td{border-top:2px solid var(--line2);font-weight:800;background:#F6F6F4}
   tr.nocat td.name{color:var(--orange)}
   tr.warn td{color:var(--orange)}
-  .pct{color:var(--muted)} .g{color:var(--green)} .r{color:var(--red)}
-  .note{color:var(--muted);font-size:12px;margin:8px 2px}
+  .pct{color:var(--muted);font-weight:500} .g{color:var(--green)} .r{color:var(--red)} .o{color:var(--orange)} .bd{color:var(--accent)}
+  .pct.g{color:var(--green)} .pct.o{color:var(--orange)} .pct.r{color:var(--red)}
+  td.m{font-weight:700;border-radius:0}
+  td.m.g{color:var(--green);background:var(--g-bg)} td.m.o{color:var(--orange);background:var(--o-bg)} td.m.r{color:var(--red);background:var(--r-bg)}
+  tbody tr:hover td.m.g{background:rgba(14,124,90,.14)} tbody tr:hover td.m.o{background:rgba(232,130,12,.16)} tbody tr:hover td.m.r{background:rgba(194,69,59,.13)}
+  .note{color:var(--muted);font-size:12px;margin:8px 4px}
   td.name.exp{cursor:pointer;user-select:none} td.name.exp:hover{color:var(--accent)}
-  .caret{display:inline-block;width:12px;color:var(--muted);font-size:11px;transition:transform .12s}
+  .caret{display:inline-block;width:14px;color:var(--faint);font-size:11px;transition:transform .14s}
   tr.open .caret{transform:rotate(90deg);color:var(--accent)}
-  tr.camp{cursor:pointer} tr.camp td{background:#eef0f3;font-weight:700;border-top:2px solid var(--line)}
-  tr.camp:hover td{background:#e6e9ee}
+  tr.camp{cursor:pointer} tr.camp td{background:#F0F1F4;font-weight:700;border-top:2px solid var(--line2)}
+  tr.camp:hover td{background:#E8EAF0}
   tr.camp td.name{color:var(--text);user-select:none}
-  td.name.sub{padding-left:28px}
-  tr.detail td{background:#fafafa;border-top:0;padding:4px 12px 12px;text-align:left}
-  .ocard{display:flex;gap:12px;align-items:center;padding:8px 6px;border-top:1px solid var(--line);text-align:left}
+  td.name.sub{padding-left:30px}
+  tr.detail td{background:#FAFAF8;border-top:0;padding:4px 14px 14px;text-align:left}
+  .ocard{display:flex;gap:12px;align-items:center;padding:9px 8px;border-top:1px solid var(--line);text-align:left}
   .ocard:first-child{border-top:0}
-  .oimg{width:48px;height:48px;border-radius:8px;object-fit:cover;background:#f0f1f3;border:1px solid var(--line);flex:none}
+  .oimg{width:50px;height:50px;border-radius:10px;object-fit:cover;background:#f0f1f3;border:1px solid var(--line);flex:none}
   .oimg.noimg{background:#f0f1f3}
-  .ocard.assigned{opacity:.6}
-  select.passign,select.cassign{margin-left:auto;background:#fff;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:12px;max-width:260px}
+  .ocard.assigned{opacity:.55}
+  select.passign,select.cassign{margin-left:auto;background:#fff;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:260px}
   .oinfo{min-width:0;flex:1}
-  .oname{font-size:13px;line-height:1.3;margin-bottom:4px}
+  .oname{font-size:13px;line-height:1.35;margin-bottom:5px;font-weight:500}
   .oname a{color:var(--accent);text-decoration:none} .oname a:hover{text-decoration:underline}
-  .omet{display:flex;flex-wrap:wrap;gap:3px 14px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .omet{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--mono);font-size:12px;color:var(--muted);align-items:center}
   .omet b{color:var(--text);font-weight:600}
   .omet .onum{color:var(--text)}
-  .omet .ap.g{color:var(--green)} .omet .ap.r{color:var(--red)}
+  .ap{font-weight:600;padding:1px 8px;border-radius:999px;font-size:11px}
+  .omet .ap.g{color:var(--green);background:var(--g-bg)} .omet .ap.r{color:var(--red);background:var(--r-bg)}
   .maprow{display:flex;align-items:center;gap:10px;padding:6px 12px;border-top:1px solid var(--line)}
   .maprow .gname{flex:1;font-size:13px} .maprow .gb{font-family:var(--mono);color:var(--muted);width:120px;text-align:right}
   .empty{color:var(--muted);font-size:12px;padding:8px 12px}
-  .cfg{display:flex;flex-wrap:wrap;gap:12px;align-items:end;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .cfg{display:flex;flex-wrap:wrap;gap:12px;align-items:end;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow)}
   .cfg label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
-  .cfg input{background:#fff;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 9px;font-size:13px;width:160px}
+  .cfg input{background:#fff;border:1px solid var(--line);color:var(--text);border-radius:9px;padding:8px 10px;font-size:13px;width:170px;font-family:var(--mono)}
+  .cfg input:focus{outline:0;border-color:var(--accent)}
   @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <a href="index.html" target="_top" style="display:inline-block;margin-bottom:10px;color:var(--muted);text-decoration:none;font-size:13px">← На головну</a>
+  <a class="back" href="index.html" target="_top">← На головну</a>
   <h1>Реклама — категорії та бюджет</h1>
   <div class="sub">Категорії = ті, що реально рекламуються в Google Ads (типи товару в кампаніях, по кожному магазину). Заявки/маржа з сайтів привʼязуються до них у вкладці «Прив'язка».</div>
 
   <div class="bar">
-    <button class="ghost" id="pToday">Сьогодні</button>
-    <button class="ghost" id="pYest">Вчора</button>
-    <button class="ghost" id="d7">7 днів</button>
-    <button class="ghost" id="d15">15 днів</button>
-    <button class="ghost" id="pThisM">Цей місяць</button>
-    <button class="ghost" id="pLastM">Минулий місяць</button>
-    <button class="ghost" id="all">Весь період</button>
-    <span style="width:12px"></span>
+    <div class="seg">
+      <button class="ghost" id="pToday">Сьогодні</button>
+      <button class="ghost" id="pYest">Вчора</button>
+      <button class="ghost" id="d7">7 днів</button>
+      <button class="ghost" id="d15">15 днів</button>
+      <button class="ghost" id="pThisM">Цей місяць</button>
+      <button class="ghost" id="pLastM">Минулий місяць</button>
+      <button class="ghost" id="all">Весь період</button>
+    </div>
+    <span style="width:6px"></span>
     <label>Від<input type="date" id="from"></label>
     <label>До<input type="date" id="to"></label>
     <button id="apply">Показати</button>
     <span style="flex:1"></span>
-    <button class="ghost on" id="vTable">Таблиця</button>
-    <button class="ghost" id="vMap">Прив'язка</button>
+    <div class="seg">
+      <button class="ghost on" id="vTable">Таблиця</button>
+      <button class="ghost" id="vMap">Прив'язка</button>
+    </div>
     <button class="ghost" id="cfgBtn">⚙ Налаштування</button>
     <button class="ghost" id="reload">↻</button>
   </div>
@@ -306,7 +336,7 @@ function renderTable(f,t){
     // усі кампанії цього магазину — для авто-маршрутизації заказів «без реклами»
     const shopCamps=new Set(ALLCAMPS.filter(c=>c.src===src).map(c=>c.camp));
     if(!adv.length){
-      body=`<tr><td class="empty" colspan="12">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
+      body=`<tr><td class="empty" colspan="14">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
     } else if(grouped){
       const campVals=Object.values(cc).map(x=>x&&x.camp).filter(Boolean);
       const catchAll=campVals.find(n=>{const z=(n||"").toLowerCase();
@@ -441,7 +471,7 @@ function renderTable(f,t){
         <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
-        <th>Викуп %</th><th>Бюджет ₴</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
+        <th>Викуп %</th><th>Бюджет ₴</th><th>Ціна заявки</th><th>Ціна заказу</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
       </tr></thead><tbody>${body}</tbody></table>${catBlock}${phoneBlock}</div>`;
   }
   // внизу — лише заказы, де магазин НЕ визначено (джерело в MyDrop ще не відмічено)
@@ -452,9 +482,9 @@ function renderTable(f,t){
   el("kpis").innerHTML=`
     <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
     <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div></div>
-    <div class="kpi"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${gd.hasBuy?Math.round(gd.bo*100)+"%":"—"}</span></div></div>
-    <div class="kpi"><div class="l">Бюджет · ЗП · поверн.</div><div class="v">${fmt(grand.budget)} <span class="pct" style="font-size:12px">${fmt(gd.zp)}·${fmt(gd.ret)}</span></div></div>
-    <div class="kpi"><div class="l">Чистий прибуток</div><div class="v ${gd.net>=0?'g':'r'}">${gd.hasBuy?fmt(gd.net)+" ₴":"—"}</div></div>`;
+    <div class="kpi k-ok"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${gd.hasBuy?Math.round(gd.bo*100)+"%":"—"}</span></div></div>
+    <div class="kpi k-bd"><div class="l">Бюджет · ЗП · поверн.</div><div class="v">${fmt(grand.budget)} <span class="pct" style="font-size:12px">${fmt(gd.zp)}·${fmt(gd.ret)}</span></div></div>
+    <div class="kpi ${gd.net>=0?'k-ok':'k-amb'}"><div class="l">Чистий прибуток</div><div class="v ${gd.net>=0?'g':'r'}">${gd.hasBuy?fmt(gd.net)+" ₴":"—"}</div></div>`;
   el("shops").innerHTML=html||"<div class='note'>Немає даних.</div>";
   attachExpand();
   attachCampToggle();
@@ -571,39 +601,35 @@ function calcNet(r){
   const net=vyr-(r.budget||0)-zp-ret;                          // чистий прибуток
   return {fin,hasBuy,bo,zp,ret,net};
 }
-function cellsHtml(r){
+// пороги кольору: червоний < warn, помаранчевий warn..good, зелений >= good
+function clr(v,warn,good){ return v>=good?'g':(v>=warn?'o':'r'); }
+// формує набір комірок метрик (однаковий для категорії і для рядка-кампанії)
+function metricCells(r){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
   const d=calcNet(r);
   const roas=r.budget?(r.sum||0)/r.budget:0;
   const roi=r.budget?d.net/r.budget:0;
+  const boP=Math.round(d.bo*100), roiP=Math.round(roi*100);
+  const cpl=r.leads?r.budget/r.leads:0;        // ціна заявки = бюджет / заявки
+  const cpa=r.approved?r.budget/r.approved:0;  // ціна заказу = бюджет / апрув
   return `<td>${fmt(r.leads)}</td>
-    <td>${fmt(r.approved)} <span class="pct">${apr}%</span></td>
-    <td>${fmt(r.margin)}</td>
-    <td class="${d.bo>=0.6?'g':(d.bo?'r':'')}">${d.hasBuy?Math.round(d.bo*100)+'%':"—"}</td>
-    <td>${r.budget?fmt(r.budget):"—"}</td>
+    <td>${fmt(r.approved)} <span class="pct ${clr(apr,70,85)}">${apr}%</span></td>
+    <td class="g">${fmt(r.margin)}</td>
+    <td class="m ${d.hasBuy?clr(boP,50,70):''}">${d.hasBuy?boP+'%':"—"}</td>
+    <td class="bd">${r.budget?fmt(r.budget):"—"}</td>
+    <td class="pct">${(r.budget&&r.leads)?fmt(cpl):"—"}</td>
+    <td class="pct">${(r.budget&&r.approved)?fmt(cpa):"—"}</td>
     <td class="${d.zp?'r':''}">${d.zp?fmt(d.zp):"—"}</td>
     <td class="${d.ret?'r':''}">${d.ret?fmt(d.ret):"—"}</td>
-    <td class="${roas>=1?'g':'r'}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
-    <td class="${roi>=0?'g':'r'}">${(r.budget&&d.hasBuy)?Math.round(roi*100)+'%':"—"}</td>
-    <td class="${d.net>=0?'g':'r'}">${d.hasBuy?fmt(d.net):"—"}</td>
+    <td class="m ${r.budget?clr(roas,1,4):''}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
+    <td class="m ${(r.budget&&d.hasBuy)?clr(roiP,0,100):''}">${(r.budget&&d.hasBuy)?roiP+'%':"—"}</td>
+    <td class="m ${d.hasBuy?(d.net>=0?'g':'r'):''}">${d.hasBuy?fmt(d.net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
+function cellsHtml(r){ return metricCells(r); }
 function campHtml(gr,cuid){
-  const apr=gr.leads?Math.round(gr.approved/gr.leads*100):0;
-  const d=calcNet(gr);
-  const roas=gr.budget?(gr.sum||0)/gr.budget:0;
-  const roi=gr.budget?d.net/gr.budget:0;
   const n=gr.rows.length;
-  return `<tr class="camp" data-cuid="${cuid}"><td class="name"><span class="caret">▸</span>${gr.camp} <span class="pct" style="font-weight:400">· ${n} катег.</span></td>
-    <td>${fmt(gr.leads)}</td><td>${fmt(gr.approved)} <span class="pct">${apr}%</span></td>
-    <td>${fmt(gr.margin)}</td>
-    <td class="${d.bo>=0.6?'g':(d.bo?'r':'')}">${d.hasBuy?Math.round(d.bo*100)+'%':"—"}</td>
-    <td>${gr.budget?fmt(gr.budget):"—"}</td>
-    <td class="${d.zp?'r':''}">${d.zp?fmt(d.zp):"—"}</td>
-    <td class="${d.ret?'r':''}">${d.ret?fmt(d.ret):"—"}</td>
-    <td class="${roas>=1?'g':'r'}">${gr.budget?roas.toFixed(2)+'×':"—"}</td>
-    <td class="${roi>=0?'g':'r'}">${(gr.budget&&d.hasBuy)?Math.round(roi*100)+'%':"—"}</td>
-    <td class="${d.net>=0?'g':'r'}">${d.hasBuy?fmt(d.net):"—"}</td><td class="g">${fmt(gr.upsSum)}</td></tr>`;
+  return `<tr class="camp" data-cuid="${cuid}"><td class="name"><span class="caret">▸</span>${gr.camp} <span class="pct" style="font-weight:400">· ${n} катег.</span></td>${metricCells(gr)}</tr>`;
 }
 function rowHtml(r,isTot,src,sub,campId){
   if(isTot) return `<tr class="tot"><td class="name">${r.cat}</td>${cellsHtml(r)}</tr>`;
@@ -614,7 +640,7 @@ function rowHtml(r,isTot,src,sub,campId){
   if(!(r.leads>0)) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const uid="r"+(ROWUID++); ROWMETA[uid]={src, wkeys:(r.wkeys||[]), camps:(Array.isArray(r.camps)?r.camps:null), phoneOids:(r.phoneOids&&r.phoneOids.length?r.phoneOids:null)};
   const main=`<tr class="${cls}"${dc}${hid}><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
-  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="12"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
+  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="14"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
   return main+detail;
 }
 function attachExpand(){
