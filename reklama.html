@@ -656,6 +656,13 @@ async function fillOrders(uid){
     for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
       for(const oid in ords){ const o=ords[oid];
         if(o&&wk.has(o.catKey)&&(!camps||camps.has(o.camp||""))) rows.push(Object.assign({day},o)); } }
+    // Фолбэк: якщо строгий фільтр по кампанії дав 0 (агрегат «ads» розійшовся з ads-ord
+    // по полю camp), показуємо всі заказы цієї категорії за період — щоб заказы не зникали.
+    if(!rows.length){
+      for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
+        for(const oid in ords){ const o=ords[oid];
+          if(o&&wk.has(o.catKey)) rows.push(Object.assign({day},o)); } }
+    }
   }
   rows.sort((a,b)=> a.day<b.day?1:a.day>b.day?-1:0);
   box.innerHTML = rows.length
