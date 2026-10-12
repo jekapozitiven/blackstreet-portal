@@ -249,7 +249,7 @@ input[type=number]{-moz-appearance:textfield;}
       <span class="hcard-arrow">↗</span>
       <span class="hcard-icon">📊</span>
       <div class="hcard-title">Трекер реклами</div>
-      <div class="hcard-desc">Щотижневий аналіз по кампаніях і джерелах. Бюджет, маржа, ROAS, ROI, динаміка.</div>
+      <div class="hcard-desc">Категорії, кампанії та бюджет по кожному магазину. Заявки, маржа, викуп, ROAS, ROI, чистий прибуток за будь-який період.</div>
       <div class="badge-active">Активно</div>
     </div>
     <div class="hcard" onclick="openReports()">
@@ -283,13 +283,12 @@ input[type=number]{-moz-appearance:textfield;}
     <div class="app-logo">BBB CLUB <em>//</em></div>
     <div class="app-title">Трекер реклами</div>
     <div class="bar-right">
-      <button class="btn" onclick="exportData()">⬇ Експорт</button>
-      <button class="btn" onclick="document.getElementById('fimp').click()">⬆ Імпорт</button>
-      <input type="file" id="fimp" accept=".json" style="display:none" onchange="importData(event)">
       <span id="fb-status"></span>
     </div>
   </div>
-  <div class="main">
+  <!-- Новий трекер реклами (reklama.html) вбудований через iframe. Старий тижневий трекер нижче прихований. -->
+  <iframe id="reklama-frame" src="reklama.html" title="Трекер реклами" style="width:100%;height:calc(100vh - 56px);border:0;display:block;background:#F7F7F5"></iframe>
+  <div class="main" style="display:none">
     <div class="tabs">
       <button class="tab on" id="tb-week" onclick="switchTab('week')">Тиждень</button>
       <button class="tab" id="tb-stats" onclick="switchTab('stats')">Статистика</button>
