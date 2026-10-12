@@ -350,6 +350,11 @@ function renderTable(f,t){
       // 2в) заказы «без реклами»: якщо кампанія визначена по товару (авто) або призначена вручну —
       //     кладемо в цю кампанію; інакше лишаємо у leftover (ручний вибір під таблицею).
       if(catchAll) shopCamps.add(catchAll);
+      // кампанії, що РЕАЛЬНО крутились у вибраному періоді (бюджет>0). Класти заказы можна лише в них:
+      // інакше ручне призначення або стара кампанія з товару відправили б заказ у кампанію,
+      // якої в цьому періоді не було (напр. «Зимова взуття» призначена вручну, але в періоді не крутилась).
+      const periodCamps=new Set(); if(catchAll) periodCamps.add(catchAll);
+      for(const k in budgetedCamps) budgetedCamps[k].forEach(c=>periodCamps.add(c));
       const cassign=CATASSIGN[src]||{};
       for(const wc in orders){ const o=orders[wc], tgt=m[wc];
         if(tgt&&advSet.has(tgt)) continue;            // рекламовані категорії вже враховані в кроці 2
@@ -357,8 +362,8 @@ function renderTable(f,t){
         let leftCell=null;
         for(const mk in (o.camps||{})){ const cs=o.camps[mk]; const cr=cs.camp||"";
           let target=null;
-          if(cr && shopCamps.has(cr)) target=cr;      // авто: кампанія визначена по назві товару
-          else if(cassign[wc]) target=cassign[wc];    // ручне призначення категорії
+          if(cr && periodCamps.has(cr)) target=cr;                               // авто: лише кампанія, що крутилась у періоді
+          else if(cassign[wc] && periodCamps.has(cassign[wc])) target=cassign[wc]; // ручне: лише якщо та кампанія працювала в періоді
           if(target){
             const r=ensureRow("_x_"+wc,catNm,target);
             r.leads+=cs.leads;r.approved+=cs.approved;r.sold+=(cs.sold||0);r.refused+=(cs.refused||0);r.sum+=cs.sum;r.margin+=cs.margin;r.upsSum+=cs.upsSum;
