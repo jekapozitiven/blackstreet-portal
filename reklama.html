@@ -370,6 +370,13 @@ function renderTable(f,t){
       }
       // 3) групувати рядки за кампанією
       const rowsArr=Object.values(rowsMap).map(r=>({...r,wkeys:[...r.wkeys],camps:[...r.camps]}));
+      // Кампанії, які в періоді НЕ крутились (бюджет 0) — не показуємо окремою групою.
+      // Їх рядки переносимо в catchAll («всі товари», крутиться завжди), щоб заказы не зникли.
+      const campBudget={};
+      for(const r of rowsArr){ campBudget[r.camp]=(campBudget[r.camp]||0)+(r.budget||0); }
+      const ranCamps=new Set(Object.keys(campBudget).filter(c=>campBudget[c]>0));
+      if(catchAll) ranCamps.add(catchAll);
+      if(catchAll){ for(const r of rowsArr){ if(r.camp && !ranCamps.has(r.camp)) r.camp=catchAll; } }
       const groups={};
       for(const r of rowsArr){ const gr=groups[r.camp]||(groups[r.camp]={camp:r.camp,rows:[],leads:0,approved:0,sold:0,refused:0,margin:0,budget:0,sum:0,upsSum:0});
         gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.sold+=(r.sold||0);gr.refused+=(r.refused||0);gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum; }
