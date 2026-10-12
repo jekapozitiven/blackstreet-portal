@@ -45,6 +45,7 @@
   .kpi.k-ok::before{background:var(--green)} .kpi.k-bd::before{background:var(--accent)} .kpi.k-amb::before{background:var(--orange)}
   .kpi .l{color:var(--muted);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
   .kpi .v{font-size:23px;font-weight:800;margin-top:6px;font-family:var(--mono);letter-spacing:-.02em;line-height:1.1}
+  .kpi-sub{font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--mono)}
 
   .shop{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:4px 4px 8px;margin-bottom:18px;overflow-x:auto;box-shadow:var(--shadow)}
   .shop h2{font-size:16px;font-weight:700;margin:14px 16px 10px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
@@ -466,7 +467,7 @@ function renderTable(f,t){
       catBlock=`<div class="note" style="margin:10px 2px 6px">🏷️ Замовлення без реклами — кампанія не визначилась по товару. Оберіть кампанію для категорії (усі заказы цієї категорії перейдуть у неї).</div>${cards}`;
     }
     html+=`<div class="shop"><h2>${src}
-        <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
+        <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · ціна заявки <b>${tot.leads?fmt(tot.budget/tot.leads):"—"}</b> · ціна апрува <b>${tot.approved?fmt(tot.budget/tot.approved):"—"}</b> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
         <th>Викуп %</th><th>Бюджет ₴</th><th>Ціна заявки</th><th>Ціна заказу</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
@@ -479,7 +480,7 @@ function renderTable(f,t){
   const gd=calcNet({approved:grand.approved,sold:grand.sold,refused:grand.refused,margin:grand.margin,budget:grand.budget});
   el("kpis").innerHTML=`
     <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
-    <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div></div>
+    <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div><div class="kpi-sub">заявка ${grand.leads?fmt(grand.budget/grand.leads):"—"} · апрув ${grand.approved?fmt(grand.budget/grand.approved):"—"} ₴</div></div>
     <div class="kpi k-ok"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${gd.hasBuy?Math.round(gd.bo*100)+"%":"—"}</span></div></div>
     <div class="kpi k-bd"><div class="l">Бюджет · ЗП · поверн.</div><div class="v">${fmt(grand.budget)} <span class="pct" style="font-size:12px">${fmt(gd.zp)}·${fmt(gd.ret)}</span></div></div>
     <div class="kpi ${gd.net>=0?'k-ok':'k-amb'}"><div class="l">Чистий прибуток</div><div class="v ${gd.net>=0?'g':'r'}">${gd.hasBuy?fmt(gd.net)+" ₴":"—"}</div></div>`;
