@@ -235,20 +235,22 @@ function advCats(src){
   const g=GCAT[src]||{};
   return Object.keys(g).map(k=>({key:k,name:g[k].name||k})).sort((a,b)=>a.name.localeCompare(b.name,"uk"));
 }
-// наші категорії замовлень за період: workerKey -> {key,cat,leads,approved,sum,margin,upsSum}
+// наші категорії замовлень за період: рахуємо НАПРЯМУ з по-заказних ads-ord (ORDCACHE),
+// а не зі зводу ads. Так таблиця й розкриті заказы з одного джерела → рахунки завжди
+// збігаються, а кампанія береться реальна (та, що крутила категорію в цьому періоді).
+// workerKey -> {key,cat,leads,approved,sold,refused,sum,margin,upsSum,camps:{camp->{...}}}
 function aggCats(src,f,t){
-  const out={}, days=(ADS[src]||{});
-  for(const day in days){ if(!inRange(day,f,t))continue;
-    const cells=days[day];
-    for(const ck in cells){ const c=cells[ck];
-      const o=out[ck]||(out[ck]={key:ck,cat:c.cat||ck,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});
-      o.leads+=+c.leads||0;o.approved+=+c.approved||0;o.sold+=+c.sold||0;o.refused+=+c.refused||0;o.sum+=+c.sum||0;o.margin+=+c.margin||0;o.upsSum+=+c.upsSum||0;
-      // розбивка по кампаніях (з колектора). Старі дані без розбивки -> увесь внесок як "_nocamp".
-      const cmps=c.camps;
-      const add=(mk,camp,s)=>{ const d=o.camps[mk]||(o.camps[mk]={camp:camp||"",leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0});
-        d.leads+=+s.leads||0;d.approved+=+s.approved||0;d.sold+=+s.sold||0;d.refused+=+s.refused||0;d.sum+=+s.sum||0;d.margin+=+s.margin||0;d.upsSum+=+s.upsSum||0; };
-      if(cmps&&typeof cmps==="object"){ for(const mk in cmps){ const s=cmps[mk]||{}; add(mk,s.camp,s); } }
-      else { add("_nocamp","",c); }
+  const out={}, tree=(ORDCACHE[src]||{});
+  for(const day in tree){ if(!inRange(day,f,t))continue;
+    const ords=tree[day];
+    for(const oid in ords){ const o=ords[oid]; if(!o)continue;
+      const ck=o.catKey||"_no_cat";
+      const cell=out[ck]||(out[ck]={key:ck,cat:o.catName||ck,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});
+      const ap=+o.approved||0, sl=+o.sold||0, rf=+o.refused||0, sm=+o.sum||0, mg=+o.margin||0, up=+o.upsSum||0;
+      cell.leads++; cell.approved+=ap; cell.sold+=sl; cell.refused+=rf; cell.sum+=sm; cell.margin+=mg; cell.upsSum+=up;
+      const camp=o.camp||""; const mk=camp||"_nocamp";
+      const d=cell.camps[mk]||(cell.camps[mk]={camp:camp,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0});
+      d.leads++; d.approved+=ap; d.sold+=sl; d.refused+=rf; d.sum+=sm; d.margin+=mg; d.upsSum+=up;
     }}
   return out;
 }
@@ -370,13 +372,6 @@ function renderTable(f,t){
       }
       // 3) групувати рядки за кампанією
       const rowsArr=Object.values(rowsMap).map(r=>({...r,wkeys:[...r.wkeys],camps:[...r.camps]}));
-      // Кампанії, які в періоді НЕ крутились (бюджет 0) — не показуємо окремою групою.
-      // Їх рядки переносимо в catchAll («всі товари», крутиться завжди), щоб заказы не зникли.
-      const campBudget={};
-      for(const r of rowsArr){ campBudget[r.camp]=(campBudget[r.camp]||0)+(r.budget||0); }
-      const ranCamps=new Set(Object.keys(campBudget).filter(c=>campBudget[c]>0));
-      if(catchAll) ranCamps.add(catchAll);
-      if(catchAll){ for(const r of rowsArr){ if(r.camp && !ranCamps.has(r.camp)) r.camp=catchAll; } }
       const groups={};
       for(const r of rowsArr){ const gr=groups[r.camp]||(groups[r.camp]={camp:r.camp,rows:[],leads:0,approved:0,sold:0,refused:0,margin:0,budget:0,sum:0,upsSum:0});
         gr.rows.push(r); gr.leads+=r.leads;gr.approved+=r.approved;gr.sold+=(r.sold||0);gr.refused+=(r.refused||0);gr.margin+=r.margin;gr.budget+=r.budget;gr.sum+=(r.sum||0);gr.upsSum+=r.upsSum; }
