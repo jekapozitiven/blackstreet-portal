@@ -61,9 +61,9 @@
   tr.warn td{color:var(--orange)}
   .pct{color:var(--muted);font-weight:500} .g{color:var(--green)} .r{color:var(--red)} .o{color:var(--orange)} .bd{color:var(--accent)}
   .pct.g{color:var(--green)} .pct.o{color:var(--orange)} .pct.r{color:var(--red)}
-  td.m{font-weight:700;border-radius:0}
-  td.m.g{color:var(--green);background:var(--g-bg)} td.m.o{color:var(--orange);background:var(--o-bg)} td.m.r{color:var(--red);background:var(--r-bg)}
-  tbody tr:hover td.m.g{background:rgba(14,124,90,.14)} tbody tr:hover td.m.o{background:rgba(232,130,12,.16)} tbody tr:hover td.m.r{background:rgba(194,69,59,.13)}
+  td.m{font-weight:700}
+  td.m.g{color:var(--green)} td.m.o{color:var(--orange)} td.m.r{color:var(--red)}
+  td.net.g{background:var(--g-bg)} td.net.r{background:var(--r-bg)}
   .note{color:var(--muted);font-size:12px;margin:8px 4px}
   td.name.exp{cursor:pointer;user-select:none} td.name.exp:hover{color:var(--accent)}
   .caret{display:inline-block;width:14px;color:var(--faint);font-size:11px;transition:transform .14s}
@@ -623,7 +623,7 @@ function metricCells(r){
     <td class="${d.ret?'r':''}">${d.ret?fmt(d.ret):"—"}</td>
     <td class="m ${r.budget?clr(roas,1,4):''}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
     <td class="m ${(r.budget&&d.hasBuy)?clr(roiP,0,100):''}">${(r.budget&&d.hasBuy)?roiP+'%':"—"}</td>
-    <td class="m ${d.hasBuy?(d.net>=0?'g':'r'):''}">${d.hasBuy?fmt(d.net):"—"}</td>
+    <td class="m net ${d.hasBuy?(d.net>=0?'g':'r'):''}">${d.hasBuy?fmt(d.net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
 function cellsHtml(r){ return metricCells(r); }
