@@ -2297,7 +2297,7 @@ function repYmd(d){ const z=n=>(n<10?"0":"")+n; return d.getFullYear()+"-"+z(d.g
 async function repRenderPayStats(){
   const el=document.getElementById("rep-paytype-kpis"); if(!el) return;
   await repEnsurePayData(false);
-  const rg=repRange()||[null,null];
+  const rg=repGetDateRange()||[null,null];
   const f=rg[0]?repYmd(rg[0]):"0000-00-00", t=rg[1]?repYmd(rg[1]):"9999-99-99";
   const G={deposit:{n:0,ap:0,sold:0,dep:0}, full:{n:0,ap:0,sold:0}, cod:{n:0,ap:0,sold:0}};
   for(const src in repPayAdsCache){ const tree=repPayAdsCache[src]; if(!tree||typeof tree!=="object")continue;
