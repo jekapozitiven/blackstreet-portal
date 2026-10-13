@@ -1346,12 +1346,17 @@ async function repArchiveRecoverMissingMonths(sources){
 // ─────────────────────────────────────────────────────────────────
 let repClientIssues = [];   // помилки, знайдені порталом у завантажених даних
 let repHealthServer = null; // звіт прогону з mydrop-health
+let repGoogleMeta = null;   // позначка часу прогону Google Ads-скрипта (shop-reports/ads-google-meta)
+const GH_INTERVAL_MIN = 60; // прогон GitHub (mydrop-stats) запускається кожні 60 хв
 
 async function loadHealth(){
   try{ repHealthServer = await fbRestGet("shop-reports/mydrop-health"); }
   catch(e){ repHealthServer = null; }
+  try{ repGoogleMeta = await fbRestGet("shop-reports/ads-google-meta"); }
+  catch(e){ repGoogleMeta = null; }
   renderHealth();
 }
+function fmtRunTime(ms){ try{ return new Date(Number(ms)).toLocaleString('uk-UA'); }catch(e){ return '—'; } }
 
 function healthPlural(n){ n=Math.abs(n)%100; const d=n%10; if(n>=11&&n<=14)return'ок'; if(d===1)return'ка'; if(d>=2&&d<=4)return'ки'; return'ок'; }
 function fmtHealthTime(ms, iso, ageMin){
@@ -1371,7 +1376,7 @@ function renderHealth(){
   const serverIssues = Array.isArray(h.issues) ? h.issues : [];
   const clientIssues = repClientIssues || [];
   let ageMin=null, stale=false;
-  if(h.lastRun){ ageMin = Math.round((Date.now()-Number(h.lastRun))/60000); stale = ageMin > 30; }
+  if(h.lastRun){ ageMin = Math.round((Date.now()-Number(h.lastRun))/60000); stale = ageMin > 90; }
   const noData = !h.lastRun;
   const total = serverIssues.length + clientIssues.length;
   const bad = total>0 || stale || noData;
@@ -1381,7 +1386,24 @@ function renderHealth(){
                   : noData ? '⚠ нема даних'
                   : '✓ дані сходяться';
   let html = '';
-  html += `<div class="hp-row"><b>Останній прогін:</b> ${h.lastRun? fmtHealthTime(h.lastRun,h.lastRunIso,ageMin):'—'}</div>`;
+  html += `<div class="hp-row"><b>Останній прогін (GitHub):</b> ${h.lastRun? fmtHealthTime(h.lastRun,h.lastRunIso,ageMin):'—'}</div>`;
+  if(h.lastRun){
+    const nextMs = Number(h.lastRun) + GH_INTERVAL_MIN*60000;
+    const inMin = Math.round((nextMs - Date.now())/60000);
+    html += `<div class="hp-row"><b>Наступний прогін (GitHub):</b> ${fmtRunTime(nextMs)} ${inMin>0?`(через ${inMin} хв)`:'(ось-ось)'}</div>`;
+  }
+  // Google Ads — читаємо позначку часу, яку пише Google Ads-скрипт (якщо налаштовано)
+  const gm = repGoogleMeta || {};
+  if(gm.lastRun){
+    const gAge = Math.round((Date.now()-Number(gm.lastRun))/60000);
+    const gInt = +gm.intervalMin || 60;
+    const gNext = Number(gm.lastRun) + gInt*60000;
+    const gIn = Math.round((gNext - Date.now())/60000);
+    html += `<div class="hp-row"><b>Останній прогін (Google Ads):</b> ${fmtRunTime(gm.lastRun)} (${gAge} хв тому)</div>`;
+    html += `<div class="hp-row"><b>Наступний прогін (Google Ads):</b> ${fmtRunTime(gNext)} ${gIn>0?`(через ${gIn} хв)`:'(ось-ось)'}</div>`;
+  } else {
+    html += `<div class="hp-row" style="color:var(--text-muted)">Google Ads: немає позначки часу прогону (додайте лог у скрипт Google Ads).</div>`;
+  }
   html += `<div class="hp-row"><b>Перевірено комірок:</b> ${h.checked??'—'} · без помилок: ${h.okCount??'—'}</div>`;
   if(Array.isArray(h.healedSources) && h.healedSources.length)
     html += `<div class="hp-row" style="color:#0E7C5A">Долічено поля inWork/notApproved: ${h.healedSources.join(', ')}</div>`;
