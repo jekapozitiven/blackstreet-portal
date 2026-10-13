@@ -407,6 +407,11 @@ input[type=number]{-moz-appearance:textfield;}
       <button class="btn" id="rep-total-toggle-btn" style="margin-bottom:14px" onclick="repToggleTotalExpand()"></button>
       <div id="rep-total-days"></div>
 
+      <!-- ОПЛАТА / ВИКУП / ВОЗВРАТИ (задаток / повна оплата / накладений) -->
+      <div style="font-size:13px;font-weight:700;margin:24px 0 12px">💳 Оплата, викуп та повернення</div>
+      <div class="kpis" id="rep-paytype-kpis"></div>
+      <p class="hint" id="rep-paytype-hint" style="margin-top:8px"></p>
+
       <div style="font-size:13px;font-weight:700;margin:24px 0 12px">🎯 Допродажі</div>
       <div class="kpis" id="upsell-kpis"></div>
       <div id="upsell-leaderboard" style="margin-top:14px"></div>
@@ -1428,6 +1433,7 @@ async function repReload(){
   if(repLoading) return;
   repLoading = true;
   repClientIssues = [];
+  repPayAdsCache = null; repPayRetCache = null;   // перечитати ads-ord/returns при оновленні
   const st = document.getElementById("rep-status");
   if(st) st.textContent = "Завантаження (MyDrop)...";
 
@@ -2280,8 +2286,44 @@ function renderPrepayStats(){
   `;
 }
 
+// ── Оплата / викуп / повернення (задаток·повна оплата·накладений + возвраты) ──
+let repPayAdsCache=null, repPayRetCache=null;
+async function repEnsurePayData(force){
+  if(force){ repPayAdsCache=null; repPayRetCache=null; }
+  if(!repPayAdsCache) repPayAdsCache = await fbRestGet("shop-reports/ads-ord") || {};
+  if(!repPayRetCache) repPayRetCache = await fbRestGet("shop-reports/returns") || {};
+}
+function repYmd(d){ const z=n=>(n<10?"0":"")+n; return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); }
+async function repRenderPayStats(){
+  const el=document.getElementById("rep-paytype-kpis"); if(!el) return;
+  await repEnsurePayData(false);
+  const rg=repRange()||[null,null];
+  const f=rg[0]?repYmd(rg[0]):"0000-00-00", t=rg[1]?repYmd(rg[1]):"9999-99-99";
+  const G={deposit:{n:0,ap:0,sold:0,dep:0}, full:{n:0,ap:0,sold:0}, cod:{n:0,ap:0,sold:0}};
+  for(const src in repPayAdsCache){ const tree=repPayAdsCache[src]; if(!tree||typeof tree!=="object")continue;
+    for(const day in tree){ if(day<f||day>t)continue; const ords=tree[day]; if(!ords)continue;
+      for(const oid in ords){ const o=ords[oid]; if(!o)continue;
+        const g=G[o.pay]||G.cod; g.n++; if(+o.approved)g.ap++; if(+o.sold)g.sold++;
+        if(o.pay==="deposit") g.dep=(g.dep||0)+(+o.depAmt||0);
+      }}}
+  const bo=g=>g.ap?Math.round(g.sold/g.ap*100):0;
+  const boCol=g=>{const v=bo(g);return v>=60?"#0E7C5A":(v?"#C2453B":"#999");};
+  let rCount=0,rSum=0;
+  for(const day in (repPayRetCache||{})){ if(day<f||day>t)continue; const c=repPayRetCache[day]||{}; rCount+=+c.count||0; rSum+=+c.sum||0; }
+  const card=(title,g,extra)=>`<div class="kpi"><div class="kpi-lbl">${title}</div>
+    <div class="kpi-val">${fmt(g.n)} <span style="font-size:12px;color:var(--text-muted)">зак.</span></div>
+    <div class="kpi-sub">апрув ${fmt(g.ap)} · викуп <b style="color:${boCol(g)}">${g.ap?bo(g)+"%":"—"}</b>${extra||""}</div></div>`;
+  el.innerHTML =
+    card("Задаток", G.deposit, G.deposit.dep?`<br>сума задатків ${fmt(G.deposit.dep)} ₴`:"") +
+    card("Повна оплата", G.full, "") +
+    card("Накладений платіж", G.cod, "") +
+    `<div class="kpi"><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:#C2453B">${fmt(rCount)}</div><div class="kpi-sub">сума ${fmt(rSum)} ₴ · з Google-таблиці</div></div>`;
+  const hint=document.getElementById("rep-paytype-hint");
+  if(hint) hint.textContent="Викуп % = викуплено ÷ апрув. Задаток — за приміткою MyDrop, повна оплата — статус «Оплачен», решта — накладений платіж. Повернення — з Google-таблиці за обраний період.";
+}
 function renderUpsellStats(){
   renderPrepayStats();
+  repRenderPayStats();
   const kpisEl = document.getElementById("upsell-kpis");
   const lbEl = document.getElementById("upsell-leaderboard");
   if(!kpisEl) return;
