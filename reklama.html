@@ -12,7 +12,7 @@
 <style>
   :root{
     --bg:#F7F7F5; --card:#ffffff; --line:#E8E8E6; --line2:#E5E5E3; --text:#111; --muted:#8A8A8A; --faint:#C7C7C5;
-    --accent:#1F6FEB; --green:#0E7C5A; --red:#C2453B; --orange:#E8820C;
+    --accent:#1F6FEB; --green:#0E7C5A; --red:#C2453B; --orange:#E8820C; --violet:#7C3AED;
     --g-bg:rgba(14,124,90,.09); --o-bg:rgba(232,130,12,.11); --r-bg:rgba(194,69,59,.08); --bd-bg:rgba(31,111,235,.08);
     --mono:'JetBrains Mono',ui-monospace,monospace; --shadow:0 1px 2px rgba(17,17,17,.04),0 4px 16px rgba(17,17,17,.05);
   }
@@ -39,7 +39,7 @@
   button.ghost.on{border-color:var(--accent);color:var(--accent)}
   select{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 7px;font-size:12px;max-width:230px;font-family:inherit}
 
-  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px}
   .kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
   .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--faint)}
   .kpi.k-ok::before{background:var(--green)} .kpi.k-bd::before{background:var(--accent)} .kpi.k-amb::before{background:var(--orange)}
@@ -62,7 +62,7 @@
   .pct{color:var(--muted);font-weight:500} .g{color:var(--green)} .r{color:var(--red)} .o{color:var(--orange)} .bd{color:var(--accent)}
   .pct.g{color:var(--green)} .pct.o{color:var(--orange)} .pct.r{color:var(--red)}
   td.m{font-weight:700}
-  td.m.g{color:var(--green)} td.m.o{color:var(--orange)} td.m.r{color:var(--red)}
+  td.m.g{color:var(--green)} td.m.o{color:var(--orange)} td.m.r{color:var(--red)} td.m.p{color:var(--violet)}
   .note{color:var(--muted);font-size:12px;margin:8px 4px}
   td.name.exp{cursor:pointer;user-select:none} td.name.exp:hover{color:var(--accent)}
   .caret{display:inline-block;width:14px;color:var(--faint);font-size:11px;transition:transform .14s}
@@ -143,7 +143,7 @@
 
 <script>
 const FB = "https://owner-portal-1649e-default-rtdb.europe-west1.firebasedatabase.app";
-const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink"];
+const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink","Хор-Blink-FB"];
 // ADS[src][day][workerCatKey]={cat,leads,approved,sum,margin,upsSum}  — наші замовлення по категоріях воркера
 // GCAT[src][gKey]={name,"дата":витрати}                               — рекламовані категорії Google + бюджет
 // MAP[src][workerCatKey]=gKey                                          — наша категорія замовлення -> рекламована категорія Google
@@ -480,7 +480,8 @@ function renderTable(f,t){
   const gd=calcNet({approved:grand.approved,sold:grand.sold,refused:grand.refused,margin:grand.margin,budget:grand.budget});
   el("kpis").innerHTML=`
     <div class="kpi"><div class="l">Заявки</div><div class="v">${fmt(grand.leads)}</div></div>
-    <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div><div class="kpi-sub">заявка ${grand.leads?fmt(grand.budget/grand.leads):"—"} · апрув ${grand.approved?fmt(grand.budget/grand.approved):"—"} ₴</div></div>
+    <div class="kpi"><div class="l">Апрув</div><div class="v">${fmt(grand.approved)} <span class="pct" style="font-size:12px">${gpct}%</span></div></div>
+    <div class="kpi k-bd"><div class="l">Ціна заявки · апрува</div><div class="v">${grand.leads?fmt(grand.budget/grand.leads):"—"} <span class="pct" style="font-size:14px">· ${grand.approved?fmt(grand.budget/grand.approved):"—"} ₴</span></div></div>
     <div class="kpi k-ok"><div class="l">Маржа · викуп</div><div class="v g">${fmt(grand.margin)} <span class="pct" style="font-size:12px">${gd.hasBuy?Math.round(gd.bo*100)+"%":"—"}</span></div></div>
     <div class="kpi k-bd"><div class="l">Бюджет · ЗП · поверн.</div><div class="v">${fmt(grand.budget)} <span class="pct" style="font-size:12px">${fmt(gd.zp)}·${fmt(gd.ret)}</span></div></div>
     <div class="kpi ${gd.net>=0?'k-ok':'k-amb'}"><div class="l">Чистий прибуток</div><div class="v ${gd.net>=0?'g':'r'}">${gd.hasBuy?fmt(gd.net)+" ₴":"—"}</div></div>`;
@@ -602,6 +603,10 @@ function calcNet(r){
 }
 // пороги кольору: червоний < warn, помаранчевий warn..good, зелений >= good
 function clr(v,warn,good){ return v>=good?'g':(v>=warn?'o':'r'); }
+// ROAS: <5 червоний · 5–10 помаранчевий · 10–15 зелений · >15 фіолетовий
+function roasClass(x){ return x<5?'r':(x<10?'o':(x<=15?'g':'p')); }
+// ROI %: <80 червоний · 80–100 помаранчевий · 101–150 зелений · >150 фіолетовий
+function roiClass(x){ return x<80?'r':(x<=100?'o':(x<=150?'g':'p')); }
 // формує набір комірок метрик (однаковий для категорії і для рядка-кампанії)
 function metricCells(r){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
@@ -620,8 +625,8 @@ function metricCells(r){
     <td class="pct">${(r.budget&&r.approved)?fmt(cpa):"—"}</td>
     <td class="${d.zp?'r':''}">${d.zp?fmt(d.zp):"—"}</td>
     <td class="${d.ret?'r':''}">${d.ret?fmt(d.ret):"—"}</td>
-    <td class="m ${r.budget?clr(roas,1,4):''}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
-    <td class="m ${(r.budget&&d.hasBuy)?clr(roiP,0,100):''}">${(r.budget&&d.hasBuy)?roiP+'%':"—"}</td>
+    <td class="m ${r.budget?roasClass(roas):''}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
+    <td class="m ${(r.budget&&d.hasBuy)?roiClass(roiP):''}">${(r.budget&&d.hasBuy)?roiP+'%':"—"}</td>
     <td class="m net ${d.hasBuy?(d.net>=0?'g':'r'):''}">${d.hasBuy?fmt(d.net):"—"}</td>
     <td class="g">${fmt(r.upsSum)}</td>`;
 }
