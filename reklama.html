@@ -152,6 +152,7 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink","Х�
 let ADS = {}, GCAT = {}, MAP = {}, GCATCAMP = {}, GCATCAMPDAY = {}, GCATCAMPCOST = {};
 let PHONEORD = {}, PHONEASSIGN = {};   // ads-ord/Телефон (ручні заказы) та їх ручне призначення в кампанії
 let CATASSIGN = {};                     // ads-catcamp-assign[src][catKey]=назва кампанії — ручне призначення категорій «без реклами»
+let SKUCAT = {};                        // ads-sku-cat[src][sku]=advCatKey — ручне призначення категорії по артикулу (для «без категорії»)
 let ALLCAMPS = [];                      // [{src,camp}] — усі кампанії для випадаючого списку
 const PHONE_SRC = "Телефон";
 let ROWUID = 0, ROWMETA = {}, ORDCACHE = {};   // ROWMETA[uid]={src,wkeys}; ORDCACHE[src]=дерево ads-ord
@@ -164,7 +165,7 @@ const enc = encodeURIComponent;
 
 async function loadData(){
   el("status").textContent = "Завантаження…";
-  const [a,g,m,cc,ccd,ccc,st,po,pa,ca] = await Promise.all([
+  const [a,g,m,cc,ccd,ccc,st,po,pa,ca,sk] = await Promise.all([
     fetch(FB+"/shop-reports/ads.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-google-cat.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-map2.json").then(r=>r.json()),
@@ -175,12 +176,13 @@ async function loadData(){
     fetch(FB+"/shop-reports/ads-ord.json").then(r=>r.json()),   // весь дерево пер-ордерів (усі магазини + Телефон)
     fetch(FB+"/shop-reports/ads-phone-assign.json").then(r=>r.json()),
     fetch(FB+"/shop-reports/ads-catcamp-assign.json").then(r=>r.json()),
+    fetch(FB+"/shop-reports/ads-sku-cat.json").then(r=>r.json()),   // ручні призначення категорії по артикулу
   ]);
   ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; GCATCAMPDAY=ccd||{}; GCATCAMPCOST=ccc||{};
   const aoTree=po||{};
   ORDCACHE=aoTree;                       // пер-ордери кешуємо одразу (щоб показати номери заказів «без реклами»)
   PHONEORD=aoTree[PHONE_SRC]||{};
-  PHONEASSIGN=pa||{}; CATASSIGN=(ca||{}); ALLCAMPS=buildAllCamps();
+  PHONEASSIGN=pa||{}; CATASSIGN=(ca||{}); SKUCAT=(sk||{}); ALLCAMPS=buildAllCamps();
   if(st&&typeof st==="object"){ SETTINGS={buyout:(st.buyout==null?null:+st.buyout), returnCost:+st.returnCost||0, zpRate:(st.zpRate==null?24:+st.zpRate)}; }
   // заповнити поля панелі
   el("cfgBuyout").value = SETTINGS.buyout==null?"":SETTINGS.buyout;
@@ -238,7 +240,7 @@ function phoneAssignOf(oid){ const a=PHONEASSIGN[oid]; return (a&&a.src&&a.camp)
 function catOrders(src,wc,f,t){
   const tree=ORDCACHE[src]||{}, out=[];
   for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
-    for(const oid in ords){ const o=ords[oid]; if(o && o.catKey===wc) out.push(Object.assign({oid,day},o)); } }
+    for(const oid in ords){ const o=ords[oid]; if(o && effCat(src,o).ck===wc) out.push(Object.assign({oid,day},o)); } }
   return out;
 }
 function inRange(d,f,t){ return (!f||d>=f)&&(!t||d<=t); }
@@ -269,13 +271,22 @@ function advCats(src){
 // а не зі зводу ads. Так таблиця й розкриті заказы з одного джерела → рахунки завжди
 // збігаються, а кампанія береться реальна (та, що крутила категорію в цьому періоді).
 // workerKey -> {key,cat,leads,approved,sold,refused,sum,margin,upsSum,camps:{camp->{...}}}
+// ефективна категорія заказу з урахуванням ручного призначення по артикулу (SKUCAT)
+function effCat(src,o){
+  let ck=o.catKey||"_no_cat", cn=o.catName||ck;
+  const sku=(o.items&&o.items[0]&&o.items[0].sku)||"";
+  const ov=sku&&SKUCAT[src]&&SKUCAT[src][sku];
+  if(ov){ ck="_ovr_"+ov; cn=(GCAT[src]&&GCAT[src][ov]&&GCAT[src][ov].name)||ov;
+    MAP[src]=MAP[src]||{}; MAP[src][ck]=ov; }   // щоб рендер відправив заказ у рекламну категорію ov (і її кампанію)
+  return {ck,cn};
+}
 function aggCats(src,f,t){
   const out={}, tree=(ORDCACHE[src]||{});
   for(const day in tree){ if(!inRange(day,f,t))continue;
     const ords=tree[day];
     for(const oid in ords){ const o=ords[oid]; if(!o)continue;
-      const ck=o.catKey||"_no_cat";
-      const cell=out[ck]||(out[ck]={key:ck,cat:o.catName||ck,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});
+      const ec=effCat(src,o); const ck=ec.ck, cn=ec.cn;
+      const cell=out[ck]||(out[ck]={key:ck,cat:cn,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});
       const ap=+o.approved||0, sl=+o.sold||0, rf=+o.refused||0, sm=+o.sum||0, mg=+o.margin||0, up=+o.upsSum||0;
       cell.leads++; cell.approved+=ap; cell.sold+=sl; cell.refused+=rf; cell.sum+=sm; cell.margin+=mg; cell.upsSum+=up;
       const camp=o.camp||""; const mk=camp||"_nocamp";
@@ -658,7 +669,12 @@ function attachExpand(){
     };
   });
 }
-function cardHtml(o){
+function skuCatOptions(src,sel){
+  let o='<option value="">— категорія (по товару) —</option>';
+  advCats(src).forEach(c=>{ const s=(c.key===sel)?' selected':''; o+=`<option value="${c.key.replace(/"/g,'&quot;')}"${s}>${c.name}</option>`; });
+  return o;
+}
+function cardHtml(o,src){
   const it=(o.items&&o.items[0])||{};
   const img=it.img?`<img class="oimg" src="${it.img}" loading="lazy" onerror="this.classList.add('noimg');this.removeAttribute('src')">`:`<div class="oimg noimg"></div>`;
   const names=((o.items||[]).map(x=>{const nm=x.name||x.sku||"товар"; return x.href?`<a href="${x.href}" target="_blank" rel="noopener">${nm}</a>`:`<span>${nm}</span>`;}).join(", "))||(o.catName||"—");
@@ -666,6 +682,9 @@ function cardHtml(o){
   const drop=(o.drop||o.drop===0)? (o.approved?fmt(o.drop):"—") : (hasM?fmt((o.sum||0)-o.margin):"—");
   const marg=hasM?fmt(o.margin):"—";
   const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
+  const sku=(it.sku||"");
+  const sel=(SKUCAT[src]&&SKUCAT[src][sku])||"";
+  const catSel=(src&&sku)?`<select class="cassign skucat" data-src="${src}" data-sku="${sku.replace(/"/g,'&quot;')}" title="Призначити категорію цьому товару (і майбутнім з цим артикулом)">${skuCatOptions(src,sel)}</select>`:"";
   return `<div class="ocard">${img}<div class="oinfo">
     <div class="oname">${names}</div>
     <div class="omet">
@@ -676,8 +695,16 @@ function cardHtml(o){
       ${o.upsSum?`<span>допрод <b class="g">${fmt(o.upsSum)}</b> ₴</span>`:""}
       ${ap}
       <span>${o.day}</span>
+      ${catSel}
     </div>
   </div></div>`;
+}
+async function setSkuCat(src,sku,val){
+  SKUCAT[src]=SKUCAT[src]||{};
+  if(val) SKUCAT[src][sku]=val; else delete SKUCAT[src][sku];
+  try{ await fetch(FB+"/shop-reports/ads-sku-cat/"+enc(src)+"/"+enc(sku)+".json",
+    {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(val||null)}); }catch(e){}
+  render();
 }
 async function fillOrders(uid){
   const meta=ROWMETA[uid]; const box=el("box-"+uid); if(!meta||!box)return;
@@ -693,19 +720,24 @@ async function fillOrders(uid){
     const camps=Array.isArray(meta.camps)?new Set(meta.camps):null;   // null = всі кампанії (unmapped/стара таблиця)
     for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
       for(const oid in ords){ const o=ords[oid];
-        if(o&&wk.has(o.catKey)&&(!camps||camps.has(o.camp||""))) rows.push(Object.assign({day},o)); } }
+        if(o&&wk.has(effCat(meta.src,o).ck)&&(!camps||camps.has(o.camp||""))) rows.push(Object.assign({day},o)); } }
     // Фолбэк: якщо строгий фільтр по кампанії дав 0 (агрегат «ads» розійшовся з ads-ord
     // по полю camp), показуємо всі заказы цієї категорії за період — щоб заказы не зникали.
     if(!rows.length){
       for(const day in tree){ if(!inRange(day,f,t))continue; const ords=tree[day];
         for(const oid in ords){ const o=ords[oid];
-          if(o&&wk.has(o.catKey)) rows.push(Object.assign({day},o)); } }
+          if(o&&wk.has(effCat(meta.src,o).ck)) rows.push(Object.assign({day},o)); } }
     }
   }
   rows.sort((a,b)=> a.day<b.day?1:a.day>b.day?-1:0);
+  const src=meta.src;
   box.innerHTML = rows.length
-    ? rows.map(cardHtml).join("")+`<div class="note" style="margin-top:6px">${rows.length} заказ(ів) за період</div>`
+    ? rows.map(o=>cardHtml(o,src)).join("")+`<div class="note" style="margin-top:6px">${rows.length} заказ(ів) за період</div>`
     : `<span class="note">Немає заказів за період.</span>`;
+  box.querySelectorAll('select.skucat').forEach(s=>{
+    s.onchange=(e)=>{ e.stopPropagation(); setSkuCat(s.dataset.src, s.dataset.sku, s.value); };
+    s.onclick=(e)=>e.stopPropagation();   // щоб клік по селекту не згортав рядок
+  });
 }
 
 function renderMap(f,t){
