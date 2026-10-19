@@ -1021,6 +1021,7 @@ let repLoading = false;
 const REP_REQUIRED_SOURCES = [
   {name:"Prom-Street Code", ch:"Prom"},
   {name:"Промокод",         ch:"Промо"},
+  {name:"Blink-FB",         ch:"Facebook"},   // FB-заказы Blink — окремий магазин (дані з MyDrop: Хор-Blink-FB)
 ];
 function repEnsureRequiredSources(){
   REP_REQUIRED_SOURCES.forEach(req=>{
@@ -1443,6 +1444,7 @@ async function repReload(){
     "Black-street|Google":     "Сайт-Black-street",
     "Bonna-shop|Google":       "Сайт-Bonna-shop",
     "Blink|Google":            "Хор-Blink",
+    "Blink-FB|Facebook":       "Хор-Blink-FB",
     "Prom Black-street|Prom":  "Prom-Black-street",
     "Prom Bonna-shop|Prom":    "Prom-Bonna-shop",
     "Prom Core22|Prom":        "Prom-Core22",
