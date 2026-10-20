@@ -263,7 +263,7 @@ function campForPeriod(src,catKey,f,t){
 }
 
 // рекламовані категорії магазину (з Google Ads) — тільки вони, окремо по магазину
-function advCats(src){
+function advCats(src){if(src==="Хор-Blink-FB"){var seen={},tree=ORDCACHE[src]||{};MAP[src]=MAP[src]||{};for(var day in tree){var o=tree[day];for(var oid in o){var r=o[oid];if(r&&r.catKey){if(!seen[r.catKey])seen[r.catKey]=r.catName||r.catKey;MAP[src][r.catKey]=r.catKey;}}}return Object.keys(seen).map(function(k){return{key:k,name:seen[k]};}).sort(function(a,b){return a.name.localeCompare(b.name,"uk");});}
   const g=GCAT[src]||{};
   return Object.keys(g).map(k=>({key:k,name:g[k].name||k})).sort((a,b)=>a.name.localeCompare(b.name,"uk"));
 }
@@ -352,7 +352,7 @@ function renderTable(f,t){
       const catchAll=campVals.find(n=>{const z=(n||"").toLowerCase();
         return z.indexOf("товар")>=0 && (z.indexOf("все")>=0||z.indexOf("всі")>=0||z.indexOf("all")>=0);})||null;
       // рядок = (рекламована категорія × кампанія). Одна категорія в 2 кампаніях -> 2 рядки.
-      const SEP=" ", rowsMap={};
+      const SEP="�", rowsMap={};
       const ensureRow=(advKey,nm,camp)=>{const rk=advKey+SEP+camp; let r=rowsMap[rk];
         if(!r){ r=rowsMap[rk]={key:advKey,cat:nm,camp:camp,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:new Set(),camps:new Set()}; }
         return r; };
