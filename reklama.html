@@ -263,7 +263,7 @@ function campForPeriod(src,catKey,f,t){
 }
 
 // рекламовані категорії магазину (з Google Ads) — тільки вони, окремо по магазину
-function advCats(src){if(src==="Хор-Blink-FB"){var seen={},tree=ORDCACHE[src]||{};MAP[src]=MAP[src]||{};for(var day in tree){var o=tree[day];for(var oid in o){var r=o[oid];if(r&&r.catKey){if(!seen[r.catKey])seen[r.catKey]=r.catName||r.catKey;MAP[src][r.catKey]=r.catKey;}}}return Object.keys(seen).map(function(k){return{key:k,name:seen[k]};}).sort(function(a,b){return a.name.localeCompare(b.name,"uk");});}
+function advCats(src){if(src==="Хор-Blink-FB"){var seen={},a=ADS[src]||{};MAP[src]=MAP[src]||{};for(var day in a){for(var k in a[day]){if(!seen[k])seen[k]=a[day][k].cat||k;MAP[src][k]=k;}}return Object.keys(seen).map(function(k){return{key:k,name:seen[k]};}).sort(function(a,b){return a.name.localeCompare(b.name,"uk");});}
   const g=GCAT[src]||{};
   return Object.keys(g).map(k=>({key:k,name:g[k].name||k})).sort((a,b)=>a.name.localeCompare(b.name,"uk"));
 }
@@ -280,7 +280,7 @@ function effCat(src,o){
     MAP[src]=MAP[src]||{}; MAP[src][ck]=ov; }   // щоб рендер відправив заказ у рекламну категорію ov (і її кампанію)
   return {ck,cn};
 }
-function aggCats(src,f,t){
+function aggCats(src,f,t){if(src==="Хор-Blink-FB"){var out={},a=ADS[src]||{};for(var day in a){if(!inRange(day,f,t))continue;for(var k in a[day]){var c=a[day][k];var cell=out[k]||(out[k]={key:k,cat:c.cat||k,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});cell.leads+=c.leads||0;cell.approved+=c.approved||0;cell.sold+=c.sold||0;cell.refused+=c.refused||0;cell.sum+=c.sum||0;cell.margin+=c.margin||0;cell.upsSum+=c.upsSum||0;var cc=c.camps||{};for(var mk in cc){var sc=cc[mk];var dd=cell.camps[mk]||(cell.camps[mk]={camp:sc.camp||"",leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0});dd.leads+=sc.leads||0;dd.approved+=sc.approved||0;dd.sold+=sc.sold||0;dd.refused+=sc.refused||0;dd.sum+=sc.sum||0;dd.margin+=sc.margin||0;dd.upsSum+=sc.upsSum||0;}}}return out;}
   const out={}, tree=(ORDCACHE[src]||{});
   for(const day in tree){ if(!inRange(day,f,t))continue;
     const ords=tree[day];
