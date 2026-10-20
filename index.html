@@ -1703,7 +1703,7 @@ function repCalcMetrics(raw, buyoutPct, kcPct, kcMode, kcFix){
 // ── Prom: фактичний бюджет за місяць (розкидається по днях ПРОПОРЦІЙНО) ──
 // Тільки для Prom-магазинів. Якщо задано — кожен день множимо на (факт / сума денних оцінок),
 // тож зберігається денна картина, а підсумок за місяць = факт. Порожнє = рахувати як суму денних.
-function repIsProm(key){ return (String(key).split("|")[1]||"")==="Prom"; }
+function repIsProm(key){ return ["Prom","Facebook"].indexOf(String(key).split("|")[1]||"")>=0; }
 function repGetBudgetMonthly(key, year, month){
   if(year===undefined){ const r=repRefMonth(); year=r.year; month=r.month; }
   const v = repParams.budgetMonthly ? repParams.budgetMonthly[repParamKey(key,year,month)] : undefined;
@@ -2063,7 +2063,7 @@ function repRenderAll(){
           <input type="number" value="${s.kcMode==='fix'?s.kcFix:s.kcPct}" min="0" onfocus="this.select()"
           onblur="${s.kcMode==='fix'?`repSetKcFix('${s.key}',${refM.year},${refM.month},this.value)`:`repSetKc('${s.key}',${refM.year},${refM.month},this.value)`}"
           onkeydown="if(event.key==='Enter'){this.blur();}">${s.kcMode==='fix'?'₴/апрув':'%'}</div>
-        ${s.ch==='Prom'?`<div class="buyout-wrap" title="Фактичний бюджет за ${String(refM.month).padStart(2,'0')}.${refM.year}. Впиши підсумок за місяць — рознесеться по всіх днях пропорційно заявкам (де були замовлення). Порожнє = рахувати як суму денних.">Факт бюджет міс.
+        ${(s.ch==='Prom'||s.ch==='Facebook')?`<div class="buyout-wrap" title="Фактичний бюджет за ${String(refM.month).padStart(2,'0')}.${refM.year}. Впиши підсумок за місяць — рознесеться по всіх днях пропорційно заявкам (де були замовлення). Порожнє = рахувати як суму денних.">Факт бюджет міс.
           <input type="number" min="0" placeholder="авто" value="${repGetBudgetMonthly(s.key,refM.year,refM.month) ?? ''}" style="width:88px;margin-left:5px" onfocus="this.select()"
           onblur="repSetBudgetMonthly('${s.key}',${refM.year},${refM.month},this.value)" onkeydown="if(event.key==='Enter')this.blur()"> ₴</div>`:''}
         <div style="margin-left:auto;text-align:right">
