@@ -508,7 +508,7 @@ function phoneShopMatches(src,shop){
   const s=(src||"").toLowerCase(), h=(shop||"").toLowerCase();
   if(h.indexOf("black")>=0||h.indexOf("блек")>=0||h.indexOf("блэк")>=0) return s.indexOf("black")>=0;
   if(h.indexOf("bonna")>=0||h.indexOf("бонна")>=0) return s.indexOf("bonna")>=0;
-  if(h.indexOf("blink")>=0||h.indexOf("блін")>=0||h.indexOf("блин")>=0) return s.indexOf("blink")>=0;
+  if(h.indexOf("blink")>=0||h.indexOf("блін")>=0||h.indexOf("блин")>=0) return s.indexOf("blink")>=0 && s.indexOf("fb")<0;
   return false;
 }
 // опції випадаючого списку — лише кампанії цього магазину (value = індекс у ALLCAMPS)
