@@ -438,7 +438,7 @@ function renderTable(f,t){CURF=f;CURT=t;
     } else {
       // без даних кампаній — стара плоска таблиця
       const byAdv={};
-      for(const a of adv){ byAdv[a.key]={key:a.key,cat:a.name,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:sumCost(g[a.key],f,t),wkeys:[]}; }
+      for(const a of adv){ byAdv[a.key]={fbSrc:(src==="Хор-Blink-FB"?src:null),fbKey:a.key,key:a.key,cat:a.name,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:(src==="Хор-Blink-FB"?fbBudget(src,a.key,f,t):sumCost(g[a.key],f,t)),wkeys:[]}; }
       for(const wc in orders){ const o=orders[wc]; const dst=(m[wc]&&byAdv[m[wc]])?byAdv[m[wc]]:null; if(!dst)continue;
         dst.leads+=o.leads;dst.approved+=o.approved;dst.sold+=(o.sold||0);dst.refused+=(o.refused||0);dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(wc); }
       let rows=Object.values(byAdv); rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
