@@ -64,3 +64,11 @@ function manualFbCard(src,f,t){
   return '<div class="shop"><h2>'+shopTitle(src)+'<span class="t">заявок <b>'+fmt(tot.leads)+'</b> · апрув <b>'+fmt(tot.approved)+'</b> <span class="pct">'+tpct+'%</span> · маржа <b class="g">'+fmt(tot.margin)+' ₴</b> · бюджет <b class="bd">'+fmt(tot.budget)+' ₴</b></span></h2>'+banner
     +'<table><thead><tr><th class="name">Кампанія (вручну)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th><th>Викуп %</th><th>Бюджет ₴</th><th>Ціна заявки</th><th>Ціна заказу</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th></tr></thead><tbody>'+empty+rows+(camps.length?totRow:"")+'</tbody></table>'+addBtn+'</div>';
 }
+
+// Авто-ініціалізація: цей файл підключається ПІСЛЯ основного <script>, тому FB/render уже існують.
+// Тягнемо ручні кампанії + дані MyDrop і перемальовуємо (щоб Black-street - FB показав картку).
+(async function(){
+  try{ MFB   = await fetch(FB+"/shop-reports/ads-fb-manual.json").then(function(r){return r.json();})||{}; }catch(e){ MFB={}; }
+  try{ MDROP = await fetch(FB+"/shop-reports/mydrop.json").then(function(r){return r.json();})||{}; }catch(e){ MDROP={}; }
+  if(typeof render==="function") render();
+})();
