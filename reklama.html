@@ -143,7 +143,7 @@
 
 <script>
 const FB = "https://owner-portal-1649e-default-rtdb.europe-west1.firebasedatabase.app";
-const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink","Хор-Blink-FB"];
+const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink","Хор-Blink-FB","Сайт-Black-street-FB"];
 // ADS[src][day][workerCatKey]={cat,leads,approved,sum,margin,upsSum}  — наші замовлення по категоріях воркера
 // GCAT[src][gKey]={name,"дата":витрати}                               — рекламовані категорії Google + бюджет
 // MAP[src][workerCatKey]=gKey                                          — наша категорія замовлення -> рекламована категорія Google
@@ -161,7 +161,7 @@ let SETTINGS = {buyout:null, returnCost:0, zpRate:24};   // buyout% ручний
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
 const el = id => document.getElementById(id);
-const enc = encodeURIComponent; let FBBUD={}, CURF="", CURT=""; function fbBudget(src,key,f,t){var o=((FBBUD[src]||{})[key]||{});return +o[(f||"")+"_"+(t||"")]||0;} async function saveFbBudget(src,key,f,t,val){FBBUD[src]=FBBUD[src]||{};FBBUD[src][key]=FBBUD[src][key]||{};var pk=(f||"")+"_"+(t||"");var v=parseFloat(val);var body=(isNaN(v)||v<0)?null:v;if(body===null){delete FBBUD[src][key][pk];}else{FBBUD[src][key][pk]=v;}try{await fetch(FB+"/shop-reports/ads-fb-budget/"+enc(src)+"/"+enc(key)+"/"+enc(pk)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});}catch(e){}render();}
+const enc = encodeURIComponent; let FBBUD={}, CURF="", CURT=""; function isFbSrc(s){return /-FB$/i.test(String(s||""));} function fbBudget(src,key,f,t){var o=((FBBUD[src]||{})[key]||{});return +o[(f||"")+"_"+(t||"")]||0;} async function saveFbBudget(src,key,f,t,val){FBBUD[src]=FBBUD[src]||{};FBBUD[src][key]=FBBUD[src][key]||{};var pk=(f||"")+"_"+(t||"");var v=parseFloat(val);var body=(isNaN(v)||v<0)?null:v;if(body===null){delete FBBUD[src][key][pk];}else{FBBUD[src][key][pk]=v;}try{await fetch(FB+"/shop-reports/ads-fb-budget/"+enc(src)+"/"+enc(key)+"/"+enc(pk)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});}catch(e){}render();}
 
 async function loadData(){ try{ FBBUD = await fetch(FB+"/shop-reports/ads-fb-budget.json").then(r=>r.json())||{}; }catch(e){ FBBUD={}; }
   el("status").textContent = "Завантаження…";
@@ -263,7 +263,7 @@ function campForPeriod(src,catKey,f,t){
 }
 
 // рекламовані категорії магазину (з Google Ads) — тільки вони, окремо по магазину
-function advCats(src){if(src==="Хор-Blink-FB"){var seen={},a=ADS[src]||{};MAP[src]=MAP[src]||{};for(var day in a){for(var k in a[day]){if(!seen[k])seen[k]=a[day][k].cat||k;MAP[src][k]=k;}}return Object.keys(seen).map(function(k){return{key:k,name:seen[k]};}).sort(function(a,b){return a.name.localeCompare(b.name,"uk");});}
+function advCats(src){if(isFbSrc(src)){var seen={},a=ADS[src]||{};MAP[src]=MAP[src]||{};for(var day in a){for(var k in a[day]){if(!seen[k])seen[k]=a[day][k].cat||k;MAP[src][k]=k;}}return Object.keys(seen).map(function(k){return{key:k,name:seen[k]};}).sort(function(a,b){return a.name.localeCompare(b.name,"uk");});}
   const g=GCAT[src]||{};
   return Object.keys(g).map(k=>({key:k,name:g[k].name||k})).sort((a,b)=>a.name.localeCompare(b.name,"uk"));
 }
@@ -280,7 +280,7 @@ function effCat(src,o){
     MAP[src]=MAP[src]||{}; MAP[src][ck]=ov; }   // щоб рендер відправив заказ у рекламну категорію ov (і її кампанію)
   return {ck,cn};
 }
-function aggCats(src,f,t){if(src==="Хор-Blink-FB"){var fbOut={},a=ADS[src]||{};for(var day in a){if(!inRange(day,f,t))continue;for(var k in a[day]){var c=a[day][k];var cell=fbOut[k]||(fbOut[k]={key:k,cat:c.cat||k,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});cell.leads+=c.leads||0;cell.approved+=c.approved||0;cell.sold+=c.sold||0;cell.refused+=c.refused||0;cell.sum+=c.sum||0;cell.margin+=c.margin||0;cell.upsSum+=c.upsSum||0;var cc=c.camps||{};for(var mk in cc){var sc=cc[mk];var dd=cell.camps[mk]||(cell.camps[mk]={camp:sc.camp||"",leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0});dd.leads+=sc.leads||0;dd.approved+=sc.approved||0;dd.sold+=sc.sold||0;dd.refused+=sc.refused||0;dd.sum+=sc.sum||0;dd.margin+=sc.margin||0;dd.upsSum+=sc.upsSum||0;}}}return fbOut;}
+function aggCats(src,f,t){if(isFbSrc(src)){var fbOut={},a=ADS[src]||{};for(var day in a){if(!inRange(day,f,t))continue;for(var k in a[day]){var c=a[day][k];var cell=fbOut[k]||(fbOut[k]={key:k,cat:c.cat||k,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});cell.leads+=c.leads||0;cell.approved+=c.approved||0;cell.sold+=c.sold||0;cell.refused+=c.refused||0;cell.sum+=c.sum||0;cell.margin+=c.margin||0;cell.upsSum+=c.upsSum||0;var cc=c.camps||{};for(var mk in cc){var sc=cc[mk];var dd=cell.camps[mk]||(cell.camps[mk]={camp:sc.camp||"",leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0});dd.leads+=sc.leads||0;dd.approved+=sc.approved||0;dd.sold+=sc.sold||0;dd.refused+=sc.refused||0;dd.sum+=sc.sum||0;dd.margin+=sc.margin||0;dd.upsSum+=sc.upsSum||0;}}}return fbOut;}
   const out={}, tree=(ORDCACHE[src]||{});
   for(const day in tree){ if(!inRange(day,f,t))continue;
     const ords=tree[day];
@@ -326,7 +326,7 @@ function renderTable(f,t){CURF=f;CURT=t;
 
     // ── підсумки магазину (не залежать від розбивки на кампанії) ──
     const unmapped={key:"_noads",cat:"Замовлення без реклами",leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:[],camps:null};
-    const tot={leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:adv.reduce((s,a)=>s+(src==="Хор-Blink-FB"?fbBudget(src,a.key,f,t):sumCost(g[a.key],f,t)),0)};
+    const tot={leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:adv.reduce((s,a)=>s+(isFbSrc(src)?fbBudget(src,a.key,f,t):sumCost(g[a.key],f,t)),0)};
     for(const wc in orders){ const o=orders[wc];
       tot.leads+=o.leads;tot.approved+=o.approved;tot.sold+=(o.sold||0);tot.refused+=(o.refused||0);tot.sum+=o.sum;tot.margin+=o.margin;tot.upsSum+=o.upsSum;
       if(!(m[wc]&&advSet.has(m[wc]))){
@@ -354,7 +354,7 @@ function renderTable(f,t){CURF=f;CURT=t;
       // рядок = (рекламована категорія × кампанія). Одна категорія в 2 кампаніях -> 2 рядки.
       const SEP="�", rowsMap={};
       const ensureRow=(advKey,nm,camp)=>{const rk=advKey+SEP+camp; let r=rowsMap[rk];
-        if(!r){ r=rowsMap[rk]={fbSrc:(src==="Хор-Blink-FB"?src:null),fbKey:advKey,key:advKey,cat:nm,camp:camp,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:new Set(),camps:new Set()}; }
+        if(!r){ r=rowsMap[rk]={fbSrc:(isFbSrc(src)?src:null),fbKey:advKey,key:advKey,cat:nm,camp:camp,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:0,wkeys:new Set(),camps:new Set()}; }
         return r; };
       // 1) бюджет по кампаніях: з ads-google-catcampcost; якщо нема — стара єдина кампанія за період
       const budgetedCamps={};   // budgetedCamps[advKey] = Set кампаній, що мали бюджет у цьому періоді
@@ -364,7 +364,7 @@ function renderTable(f,t){CURF=f;CURT=t;
           for(const dd in dys){ if(inRange(dd,f,t)) b+=+dys[dd]||0; }
           if(b>0){ const cn=cm.camp||mk; ensureRow(advKey,nm,cn).budget+=b; bset.add(cn); seeded=true; } } }
         if(!seeded){ const camp=campForPeriod(src,advKey,f,t)||catchAll||"Без кампанії";
-          ensureRow(advKey,nm,camp).budget+=(src==="Хор-Blink-FB"?fbBudget(src,advKey,f,t):sumCost(g[advKey],f,t)); bset.add(camp); } }
+          ensureRow(advKey,nm,camp).budget+=(isFbSrc(src)?fbBudget(src,advKey,f,t):sumCost(g[advKey],f,t)); bset.add(camp); } }
       const domCamp=advKey=>{let best=null,bv=-1; for(const rk in rowsMap){const r=rowsMap[rk]; if(r.key!==advKey)continue; if(r.budget>bv){bv=r.budget;best=r.camp;}} return best;};
       // 2) рознести замовлення по кампаніях за товаром (поле camp в ячейці).
       //    Кампанія заказу — ПОТОЧНА; якщо в цьому періоді в неї НЕ було бюджету на цю категорію
@@ -438,7 +438,7 @@ function renderTable(f,t){CURF=f;CURT=t;
     } else {
       // без даних кампаній — стара плоска таблиця
       const byAdv={};
-      for(const a of adv){ byAdv[a.key]={fbSrc:(src==="Хор-Blink-FB"?src:null),fbKey:a.key,key:a.key,cat:a.name,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:(src==="Хор-Blink-FB"?fbBudget(src,a.key,f,t):sumCost(g[a.key],f,t)),wkeys:[]}; }
+      for(const a of adv){ byAdv[a.key]={fbSrc:(isFbSrc(src)?src:null),fbKey:a.key,key:a.key,cat:a.name,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,budget:(isFbSrc(src)?fbBudget(src,a.key,f,t):sumCost(g[a.key],f,t)),wkeys:[]}; }
       for(const wc in orders){ const o=orders[wc]; const dst=(m[wc]&&byAdv[m[wc]])?byAdv[m[wc]]:null; if(!dst)continue;
         dst.leads+=o.leads;dst.approved+=o.approved;dst.sold+=(o.sold||0);dst.refused+=(o.refused||0);dst.sum+=o.sum;dst.margin+=o.margin;dst.upsSum+=o.upsSum;dst.wkeys.push(wc); }
       let rows=Object.values(byAdv); rows.sort((a,b)=>b.budget-a.budget||b.leads-a.leads);
