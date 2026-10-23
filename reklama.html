@@ -317,7 +317,7 @@ function renderTable(f,t){CURF=f;CURT=t;
     const c=bys[a.camp]||(bys[a.camp]={leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,oids:[]});
     c.leads++;c.approved+=p.approved||0;c.sold+=p.sold||0;c.refused+=p.refused||0;c.sum+=p.sum||0;c.margin+=p.margin||0;c.upsSum+=p.upsSum||0;c.oids.push(p.oid);
   }
-  for(const src of srcs){
+  for(const src of srcs){ if(typeof isManualFb==="function" && isManualFb(src)){ html+=manualFbCard(src,f,t); const _mc=mfbCamps(src); for(const _c of _mc){ const _v=mfbVals(src,_c.key,f,t); grand.leads+=+_v.leads||0; grand.approved+=+_v.approved||0; grand.margin+=+_v.margin||0; grand.budget+=+_v.budget||0; } continue; }
     const adv=advCats(src), g=(GCAT[src]||{}), m=(MAP[src]||{}), cc=(GCATCAMP[src]||{}), ccost=(GCATCAMPCOST[src]||{});
     const orders=aggCats(src,f,t);
     const advSet=new Set(adv.map(a=>a.key));
@@ -746,7 +746,7 @@ function renderMap(f,t){
   let html=`<div style="margin:0 2px 12px"><button id="autoBtn">✨ Авто-підбір</button>
     <button class="ghost" id="autoAllBtn" style="margin-left:8px">🔄 Переприв'язати все</button>
     <span class="note" style="margin-left:8px">«Авто-підбір» — заповнює лише порожні; «Переприв'язати все» — переразкладає всі заново (перезапис)</span></div>`;
-  for(const src of srcs){
+  for(const src of srcs){ if(typeof isManualFb==="function" && isManualFb(src)){ html+=manualFbCard(src,f,t); const _mc=mfbCamps(src); for(const _c of _mc){ const _v=mfbVals(src,_c.key,f,t); grand.leads+=+_v.leads||0; grand.approved+=+_v.approved||0; grand.margin+=+_v.margin||0; grand.budget+=+_v.budget||0; } continue; }
     const adv=advCats(src), m=(MAP[src]||{});
     const orders=aggCats(src,null,null);   // всі наші категорії за весь час — зліва
     const ocs=Object.values(orders).sort((a,b)=>b.leads-a.leads);
@@ -863,6 +863,6 @@ el("vTable").onclick=()=>{el("vTable").classList.add("on");el("vMap").classList.
 el("vMap").onclick=()=>{el("vMap").classList.add("on");el("vTable").classList.remove("on");el("tableView").style.display="none";el("mapView").style.display="";render();};
 
 loadData();
-</script>
+</script><script src="manual-fb.js?v=2"></script>
 </body>
 </html>
