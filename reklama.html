@@ -161,7 +161,7 @@ let SETTINGS = {buyout:null, returnCost:0, zpRate:24};   // buyout% ручний
 
 const fmt = n => Math.round(n||0).toLocaleString("uk-UA");
 const el = id => document.getElementById(id);
-const enc = encodeURIComponent; let FBBUD={}, CURF="", CURT=""; function isFbSrc(s){return /-FB$/i.test(String(s||""));} function fbBudget(src,key,f,t){var o=((FBBUD[src]||{})[key]||{});return +o[(f||"")+"_"+(t||"")]||0;} async function saveFbBudget(src,key,f,t,val){FBBUD[src]=FBBUD[src]||{};FBBUD[src][key]=FBBUD[src][key]||{};var pk=(f||"")+"_"+(t||"");var v=parseFloat(val);var body=(isNaN(v)||v<0)?null:v;if(body===null){delete FBBUD[src][key][pk];}else{FBBUD[src][key][pk]=v;}try{await fetch(FB+"/shop-reports/ads-fb-budget/"+enc(src)+"/"+enc(key)+"/"+enc(pk)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});}catch(e){}render();}
+const enc = encodeURIComponent; let FBBUD={}, CURF="", CURT=""; function isFbSrc(s){return /-FB$/i.test(String(s||""));} function shopTitle(s){return s==="Сайт-Black-street-FB"?"Black-street - FB":s;} function fbBudget(src,key,f,t){var o=((FBBUD[src]||{})[key]||{});return +o[(f||"")+"_"+(t||"")]||0;} async function saveFbBudget(src,key,f,t,val){FBBUD[src]=FBBUD[src]||{};FBBUD[src][key]=FBBUD[src][key]||{};var pk=(f||"")+"_"+(t||"");var v=parseFloat(val);var body=(isNaN(v)||v<0)?null:v;if(body===null){delete FBBUD[src][key][pk];}else{FBBUD[src][key][pk]=v;}try{await fetch(FB+"/shop-reports/ads-fb-budget/"+enc(src)+"/"+enc(key)+"/"+enc(pk)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});}catch(e){}render();}
 
 async function loadData(){ try{ FBBUD = await fetch(FB+"/shop-reports/ads-fb-budget.json").then(r=>r.json())||{}; }catch(e){ FBBUD={}; }
   el("status").textContent = "Завантаження…";
@@ -210,7 +210,7 @@ function bounds(){
   return [mn,mx];
 }
 function sources(){
-  const s=new Set([...Object.keys(ADS),...Object.keys(GCAT)]);
+  const s=new Set([...Object.keys(ADS),...Object.keys(GCAT),...ORDER]);
   s.delete(PHONE_SRC);   // «Телефон» — не звичайний магазин, рендериться окремою секцією
   return [...s].sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return (ia<0?9:ia)-(ib<0?9:ib);});
 }
@@ -346,7 +346,7 @@ function renderTable(f,t){CURF=f;CURT=t;
     // усі кампанії цього магазину — для авто-маршрутизації заказів «без реклами»
     const shopCamps=new Set(ALLCAMPS.filter(c=>c.src===src).map(c=>c.camp));
     if(!adv.length){
-      body=`<tr><td class="empty" colspan="14">Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі.</td></tr>`;
+      body=`<tr><td class="empty" colspan="14">${isFbSrc(src)?"Поки немає заявок з Facebook — кампанії та заявки підтягнуться автоматично, коли підуть замовлення.":"Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі."}</td></tr>`;
     } else if(grouped){
       const campVals=Object.values(cc).map(x=>x&&x.camp).filter(Boolean);
       const catchAll=campVals.find(n=>{const z=(n||"").toLowerCase();
@@ -477,7 +477,7 @@ function renderTable(f,t){CURF=f;CURT=t;
       }).join("");
       catBlock=`<div class="note" style="margin:10px 2px 6px">🏷️ Замовлення без реклами — кампанія не визначилась по товару. Оберіть кампанію для категорії (усі заказы цієї категорії перейдуть у неї).</div>${cards}`;
     }
-    html+=`<div class="shop"><h2>${src}
+    html+=`<div class="shop"><h2>${shopTitle(src)}
         <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · ціна заявки <b>${tot.leads?fmt(tot.budget/tot.leads):"—"}</b> · ціна апрува <b>${tot.approved?fmt(tot.budget/tot.approved):"—"}</b> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
@@ -752,10 +752,10 @@ function renderMap(f,t){
     const ocs=Object.values(orders).sort((a,b)=>b.leads-a.leads);
     const opts=adv.map(a=>`<option value="${a.key}">${a.name}</option>`).join("");
     if(!adv.length){
-      html+=`<div class="shop"><h2>${src}</h2><div class="empty">Немає рекламованих категорій з Google Ads — додай скрипт у цей акаунт.</div></div>`;
+      html+=`<div class="shop"><h2>${shopTitle(src)}</h2><div class="empty">Немає рекламованих категорій з Google Ads — додай скрипт у цей акаунт.</div></div>`;
       continue;
     }
-    html+=`<div class="shop"><h2>${src} <span class="t">наша категорія замовлення → рекламована категорія Google</span></h2>`;
+    html+=`<div class="shop"><h2>${shopTitle(src)} <span class="t">наша категорія замовлення → рекламована категорія Google</span></h2>`;
     if(!ocs.length) html+=`<div class="empty">Немає замовлень з сайту за весь період.</div>`;
     for(const oc of ocs){
       html+=`<div class="maprow">
