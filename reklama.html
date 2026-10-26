@@ -469,7 +469,7 @@ function renderTable(f,t){CURF=f;CURT=t;
           const hasM=o.margin&&o.margin>0;
           const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
           return `<div class="oname">${o.ext?`<span class="onum">№ ${o.ext}</span> `:""}${nm}</div>
-            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span>${(o.ext!=null)?('<select class="ordcamp" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCamp(\''+src+'\',\''+String(o.ext)+'\',this.value)">'+campOptsSel(src,(ORDCAMP[src]&&ORDCAMP[src][String(o.ext)])||o.camp||"")+'</select>'):""}</div>`;
+            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span>${(o.ext!=null)?('<select class="ordcamp" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCamp(\''+src+'\',\''+String(o.ext)+'\',this.value,this)">'+campOptsSel(src,(ORDCAMP[src]&&ORDCAMP[src][String(o.ext)])||o.camp||"")+'</select>'):""}</div>`;
         }).join("")||`<div class="oname">${lc.cat}</div>`;
         return `<div class="ocard">${img}<div class="oinfo">
           ${lines}
@@ -684,7 +684,7 @@ function cardHtml(o,src){
   const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
   const sku=(it.sku||"");
   const sel=(SKUCAT[src]&&SKUCAT[src][sku])||"";
-  const _ex=(o.ext!=null?String(o.ext):""); const catSel=(src&&_ex)?`<select class="ordcamp" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCamp('${src}','${_ex}',this.value)">${campOptsSel(src,(ORDCAMP[src]&&ORDCAMP[src][_ex])||o.camp||"")}</select>`:"";
+  const _ex=(o.ext!=null?String(o.ext):""); const catSel=(src&&_ex)?`<select class="ordcamp" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCamp('${src}','${_ex}',this.value,this)">${campOptsSel(src,(ORDCAMP[src]&&ORDCAMP[src][_ex])||o.camp||"")}</select>`:"";
   return `<div class="ocard">${img}<div class="oinfo">
     <div class="oname">${names}</div>
     <div class="omet">
@@ -838,7 +838,7 @@ async function saveMap(src,ok,gKey){
 const isoLocal=d=>{const z=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());};
 function setPeriod(f,t){ el("from").value=f; el("to").value=t; render(); }
 function setRange(days){ const t=new Date(); const f=new Date(); f.setDate(f.getDate()-(days-1)); setPeriod(isoLocal(f),isoLocal(t)); }
-el("apply").onclick=render;
+el("apply").onclick=render; el("from").onchange=el("to").onchange=function(){try{localStorage.setItem("rek-period",JSON.stringify({from:el("from").value,to:el("to").value}));}catch(e){}};
 el("reload").onclick=loadData;
 el("pToday").onclick=()=>{const t=isoLocal(new Date());setPeriod(t,t);};
 el("pYest").onclick=()=>{const d=new Date();d.setDate(d.getDate()-1);const t=isoLocal(d);setPeriod(t,t);};
