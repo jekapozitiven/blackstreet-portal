@@ -469,7 +469,7 @@ function renderTable(f,t){CURF=f;CURT=t;
           const hasM=o.margin&&o.margin>0;
           const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
           return `<div class="oname">${o.ext?`<span class="onum">№ ${o.ext}</span> `:""}${nm}</div>
-            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span></div>`;
+            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span>${(o.items&&o.items[0]&&o.items[0].sku)?('<select class="cassign skucat" onclick="event.stopPropagation()" data-src="'+src+'" data-sku="'+String(o.items[0].sku).replace(/"/g,'&quot;')+'" title="Категорія по товару">'+skuCatOptions(src,(SKUCAT[src]&&SKUCAT[src][o.items[0].sku])||"")+'</select>'):""}</div>`;
         }).join("")||`<div class="oname">${lc.cat}</div>`;
         return `<div class="ocard">${img}<div class="oinfo">
           ${lines}
@@ -572,7 +572,7 @@ function attachPhoneAssign(){
   });
 }
 function attachCatAssign(){
-  el("shops").querySelectorAll('select.cassign').forEach(s=>{
+  el("shops").querySelectorAll('select.skucat').forEach(s=>{ s.onchange=(e)=>{e.stopPropagation(); setSkuCat(s.dataset.src,s.dataset.sku,s.value);}; }); el("shops").querySelectorAll('select.cassign:not(.skucat)').forEach(s=>{
     s.onchange=async()=>{
       const src=s.dataset.src, cat=s.dataset.cat, v=s.value;
       CATASSIGN[src]=CATASSIGN[src]||{};
