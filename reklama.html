@@ -152,7 +152,7 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink","Х�
 let ADS = {}, GCAT = {}, MAP = {}, GCATCAMP = {}, GCATCAMPDAY = {}, GCATCAMPCOST = {};
 let PHONEORD = {}, PHONEASSIGN = {};   // ads-ord/Телефон (ручні заказы) та їх ручне призначення в кампанії
 let CATASSIGN = {};                     // ads-catcamp-assign[src][catKey]=назва кампанії — ручне призначення категорій «без реклами»
-let SKUCAT = {}, ORDCAT = {};                        // ads-sku-cat[src][sku]=advCatKey — ручне призначення категорії по артикулу (для «без категорії»)
+let SKUCAT = {}, ORDCAT = {}, ORDCAMP = {};                        // ads-sku-cat[src][sku]=advCatKey — ручне призначення категорії по артикулу (для «без категорії»)
 let ALLCAMPS = [];                      // [{src,camp}] — усі кампанії для випадаючого списку
 const PHONE_SRC = "Телефон";
 let ROWUID = 0, ROWMETA = {}, ORDCACHE = {};   // ROWMETA[uid]={src,wkeys}; ORDCACHE[src]=дерево ads-ord
@@ -289,7 +289,7 @@ function aggCats(src,f,t){if(isFbSrc(src)){var fbOut={},a=ADS[src]||{};for(var d
       const cell=out[ck]||(out[ck]={key:ck,cat:cn,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0,camps:{}});
       const ap=+o.approved||0, sl=+o.sold||0, rf=+o.refused||0, sm=+o.sum||0, mg=+o.margin||0, up=+o.upsSum||0;
       cell.leads++; cell.approved+=ap; cell.sold+=sl; cell.refused+=rf; cell.sum+=sm; cell.margin+=mg; cell.upsSum+=up;
-      const camp=o.camp||""; const mk=camp||"_nocamp";
+      const camp=((ORDCAMP[src]&&ORDCAMP[src][String(o.ext)]))||o.camp||""; const mk=camp||"_nocamp";
       const d=cell.camps[mk]||(cell.camps[mk]={camp:camp,leads:0,approved:0,sold:0,refused:0,sum:0,margin:0,upsSum:0});
       d.leads++; d.approved+=ap; d.sold+=sl; d.refused+=rf; d.sum+=sm; d.margin+=mg; d.upsSum+=up;
     }}
@@ -347,7 +347,7 @@ function renderTable(f,t){CURF=f;CURT=t;
     const shopCamps=new Set(ALLCAMPS.filter(c=>c.src===src).map(c=>c.camp));
     if(!adv.length){
       body=`<tr><td class="empty" colspan="14">${isFbSrc(src)?"Поки немає заявок з Facebook — кампанії та заявки підтягнуться автоматично, коли підуть замовлення.":"Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі."}</td></tr>`;
-    } else if(grouped){
+    } else if(grouped){ const ordCampSet=new Set(Object.values(ORDCAMP[src]||{}));
       const campVals=Object.values(cc).map(x=>x&&x.camp).filter(Boolean);
       const catchAll=campVals.find(n=>{const z=(n||"").toLowerCase();
         return z.indexOf("товар")>=0 && (z.indexOf("все")>=0||z.indexOf("всі")>=0||z.indexOf("all")>=0);})||null;
@@ -376,7 +376,7 @@ function renderTable(f,t){CURF=f;CURT=t;
         const dom = domCamp(tgt)||catchAll||"Без кампанії";
         const bset = budgetedCamps[tgt];
         for(const mk in (o.camps||{})){ const cs=o.camps[mk]; const cr=cs.camp||"";
-          const target = (cr && bset && bset.has(cr)) ? cr : dom;
+          const target = (cr && ((bset && bset.has(cr))||ordCampSet.has(cr))) ? cr : dom;
           const r=ensureRow(tgt,nm,target);
           r.leads+=cs.leads;r.approved+=cs.approved;r.sold+=(cs.sold||0);r.refused+=(cs.refused||0);r.sum+=cs.sum;r.margin+=cs.margin;r.upsSum+=cs.upsSum;
           r.wkeys.add(wc); r.camps.add(cr);
@@ -403,7 +403,7 @@ function renderTable(f,t){CURF=f;CURT=t;
         let leftCell=null;
         for(const mk in (o.camps||{})){ const cs=o.camps[mk]; const cr=cs.camp||"";
           let target=null;
-          if(cr && periodCamps.has(cr)) target=cr;                               // авто: лише кампанія, що крутилась у періоді
+          if(cr && (periodCamps.has(cr)||ordCampSet.has(cr))) target=cr;                               // авто: лише кампанія, що крутилась у періоді
           else if(cassign[wc] && periodCamps.has(cassign[wc])) target=cassign[wc]; // ручне: лише якщо та кампанія працювала в періоді
           if(target){
             const r=ensureRow("_x_"+wc,catNm,target);
@@ -469,7 +469,7 @@ function renderTable(f,t){CURF=f;CURT=t;
           const hasM=o.margin&&o.margin>0;
           const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
           return `<div class="oname">${o.ext?`<span class="onum">№ ${o.ext}</span> `:""}${nm}</div>
-            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span>${(o.ext!=null)?('<select class="ordcat" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCat(\''+src+'\',\''+String(o.ext)+'\',this.value)">'+skuCatOptions(src,(ORDCAT[src]&&ORDCAT[src][String(o.ext)])||"")+'</select>'):""}</div>`;
+            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span>${(o.ext!=null)?('<select class="ordcamp" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCamp(\''+src+'\',\''+String(o.ext)+'\',this.value)">'+campOptsSel(src,(ORDCAMP[src]&&ORDCAMP[src][String(o.ext)])||o.camp||"")+'</select>'):""}</div>`;
         }).join("")||`<div class="oname">${lc.cat}</div>`;
         return `<div class="ocard">${img}<div class="oinfo">
           ${lines}
@@ -684,7 +684,7 @@ function cardHtml(o,src){
   const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
   const sku=(it.sku||"");
   const sel=(SKUCAT[src]&&SKUCAT[src][sku])||"";
-  const _ex=(o.ext!=null?String(o.ext):""); const catSel=(src&&_ex)?`<select class="ordcat" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCat('${src}','${_ex}',this.value)">${skuCatOptions(src,(ORDCAT[src]&&ORDCAT[src][_ex])||sel)}</select>`:"";
+  const _ex=(o.ext!=null?String(o.ext):""); const catSel=(src&&_ex)?`<select class="ordcamp" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCamp('${src}','${_ex}',this.value)">${campOptsSel(src,(ORDCAMP[src]&&ORDCAMP[src][_ex])||o.camp||"")}</select>`:"";
   return `<div class="ocard">${img}<div class="oinfo">
     <div class="oname">${names}</div>
     <div class="omet">
