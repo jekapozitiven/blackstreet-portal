@@ -74,10 +74,27 @@ async function setOrdCat(src,ext,val){
   render();
 }
 
+// Ручне призначення РЕКЛАМНОЇ КАМПАНІЇ по КОНКРЕТНОМУ заказу (по номеру заказу).
+// Зберігається в shop-reports/ads-ord-camp[src][ext]=назва кампанії. Якщо раптом заказ
+// залетів не в ту кампанію — обираєш правильну, і він переноситься туди.
+async function setOrdCamp(src,ext,val){
+  ORDCAMP[src]=ORDCAMP[src]||{};
+  if(val) ORDCAMP[src][ext]=val; else delete ORDCAMP[src][ext];
+  try{ await fetch(FB+"/shop-reports/ads-ord-camp/"+enc(src)+"/"+enc(ext)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(val||null)}); }catch(e){}
+  render();
+}
+// Опції селекта кампаній для магазину (з поточною вибраною).
+function campOptsSel(src,sel){
+  var o='<option value="">— перенести в кампанію —</option>';
+  (typeof ALLCAMPS!=="undefined"?ALLCAMPS:[]).forEach(function(c){ if(c.src===src){ var nm=String(c.camp).replace(/"/g,'&quot;'); var s=(c.camp===sel)?' selected':''; o+='<option value="'+nm+'"'+s+'>'+c.camp+'</option>'; } });
+  return o;
+}
+
 // Авто-ініціалізація: цей файл підключається ПІСЛЯ основного <script>, тому FB/render уже існують.
-// Тягнемо ручні кампанії + дані MyDrop + ручні призначення категорій по заказу і перемальовуємо.
+// Тягнемо ручні кампанії + дані MyDrop + ручні призначення категорій/кампаній по заказу і перемальовуємо.
 (async function(){
   try{ ORDCAT = await fetch(FB+"/shop-reports/ads-ord-cat.json").then(function(r){return r.json();})||{}; }catch(e){ ORDCAT={}; }
+  try{ ORDCAMP = await fetch(FB+"/shop-reports/ads-ord-camp.json").then(function(r){return r.json();})||{}; }catch(e){ ORDCAMP={}; }
   try{ MFB   = await fetch(FB+"/shop-reports/ads-fb-manual.json").then(function(r){return r.json();})||{}; }catch(e){ MFB={}; }
   try{ MDROP = await fetch(FB+"/shop-reports/mydrop.json").then(function(r){return r.json();})||{}; }catch(e){ MDROP={}; }
   if(typeof render==="function") render();
