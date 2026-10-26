@@ -152,7 +152,7 @@ const ORDER = ["Сайт-Black-street","Сайт-Bonna-shop","Хор-Blink","Х�
 let ADS = {}, GCAT = {}, MAP = {}, GCATCAMP = {}, GCATCAMPDAY = {}, GCATCAMPCOST = {};
 let PHONEORD = {}, PHONEASSIGN = {};   // ads-ord/Телефон (ручні заказы) та їх ручне призначення в кампанії
 let CATASSIGN = {};                     // ads-catcamp-assign[src][catKey]=назва кампанії — ручне призначення категорій «без реклами»
-let SKUCAT = {};                        // ads-sku-cat[src][sku]=advCatKey — ручне призначення категорії по артикулу (для «без категорії»)
+let SKUCAT = {}, ORDCAT = {};                        // ads-sku-cat[src][sku]=advCatKey — ручне призначення категорії по артикулу (для «без категорії»)
 let ALLCAMPS = [];                      // [{src,camp}] — усі кампанії для випадаючого списку
 const PHONE_SRC = "Телефон";
 let ROWUID = 0, ROWMETA = {}, ORDCACHE = {};   // ROWMETA[uid]={src,wkeys}; ORDCACHE[src]=дерево ads-ord
@@ -275,7 +275,7 @@ function advCats(src){if(isFbSrc(src)){var seen={},a=ADS[src]||{};MAP[src]=MAP[s
 function effCat(src,o){
   let ck=o.catKey||"_no_cat", cn=o.catName||ck;
   const sku=(o.items&&o.items[0]&&o.items[0].sku)||"";
-  const ov=sku&&SKUCAT[src]&&SKUCAT[src][sku];
+  const ex=(o.ext!=null?String(o.ext):""); const ov=(ex&&ORDCAT[src]&&ORDCAT[src][ex])||(sku&&SKUCAT[src]&&SKUCAT[src][sku]);
   if(ov){ ck="_ovr_"+ov; cn=(GCAT[src]&&GCAT[src][ov]&&GCAT[src][ov].name)||ov;
     MAP[src]=MAP[src]||{}; MAP[src][ck]=ov; }   // щоб рендер відправив заказ у рекламну категорію ov (і її кампанію)
   return {ck,cn};
@@ -469,7 +469,7 @@ function renderTable(f,t){CURF=f;CURT=t;
           const hasM=o.margin&&o.margin>0;
           const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
           return `<div class="oname">${o.ext?`<span class="onum">№ ${o.ext}</span> `:""}${nm}</div>
-            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span>${(o.items&&o.items[0]&&o.items[0].sku)?('<select class="cassign skucat" onclick="event.stopPropagation()" data-src="'+src+'" data-sku="'+String(o.items[0].sku).replace(/"/g,'&quot;')+'" title="Категорія по товару">'+skuCatOptions(src,(SKUCAT[src]&&SKUCAT[src][o.items[0].sku])||"")+'</select>'):""}</div>`;
+            <div class="omet"><span>продажна <b>${fmt(o.sum)}</b> ₴</span><span>дроп <b>${o.drop?fmt(o.drop):"—"}</b></span><span>маржа <b class="${hasM?'g':''}">${hasM?fmt(o.margin):"—"}</b></span>${ap}<span>${o.day}</span>${(o.ext!=null)?('<select class="ordcat" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCat(\''+src+'\',\''+String(o.ext)+'\',this.value)">'+skuCatOptions(src,(ORDCAT[src]&&ORDCAT[src][String(o.ext)])||"")+'</select>'):""}</div>`;
         }).join("")||`<div class="oname">${lc.cat}</div>`;
         return `<div class="ocard">${img}<div class="oinfo">
           ${lines}
@@ -684,7 +684,7 @@ function cardHtml(o,src){
   const ap=!o.approved?`<span class="ap r">не апрув</span>`:(o.sold?`<span class="ap g">викуплено ✓</span>`:`<span class="ap" style="color:var(--orange)">в дорозі</span>`);
   const sku=(it.sku||"");
   const sel=(SKUCAT[src]&&SKUCAT[src][sku])||"";
-  const catSel=(src&&sku)?`<select class="cassign skucat" data-src="${src}" data-sku="${sku.replace(/"/g,'&quot;')}" title="Призначити категорію цьому товару (і майбутнім з цим артикулом)">${skuCatOptions(src,sel)}</select>`:"";
+  const _ex=(o.ext!=null?String(o.ext):""); const catSel=(src&&_ex)?`<select class="ordcat" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;max-width:220px" onclick="event.stopPropagation()" onchange="setOrdCat('${src}','${_ex}',this.value)">${skuCatOptions(src,(ORDCAT[src]&&ORDCAT[src][_ex])||sel)}</select>`:"";
   return `<div class="ocard">${img}<div class="oinfo">
     <div class="oname">${names}</div>
     <div class="omet">
