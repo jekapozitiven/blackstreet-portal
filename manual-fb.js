@@ -65,9 +65,19 @@ function manualFbCard(src,f,t){
     +'<table><thead><tr><th class="name">Кампанія (вручну)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th><th>Викуп %</th><th>Бюджет ₴</th><th>Ціна заявки</th><th>Ціна заказу</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th></tr></thead><tbody>'+empty+rows+(camps.length?totRow:"")+'</tbody></table>'+addBtn+'</div>';
 }
 
+// Ручне призначення категорії по КОНКРЕТНОМУ заказу (по номеру заказу). Працює навіть якщо
+// в даних заказу немає артикулу. Зберігається в shop-reports/ads-ord-cat[src][ext]=advCatKey.
+async function setOrdCat(src,ext,val){
+  ORDCAT[src]=ORDCAT[src]||{};
+  if(val) ORDCAT[src][ext]=val; else delete ORDCAT[src][ext];
+  try{ await fetch(FB+"/shop-reports/ads-ord-cat/"+enc(src)+"/"+enc(ext)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(val||null)}); }catch(e){}
+  render();
+}
+
 // Авто-ініціалізація: цей файл підключається ПІСЛЯ основного <script>, тому FB/render уже існують.
-// Тягнемо ручні кампанії + дані MyDrop і перемальовуємо (щоб Black-street - FB показав картку).
+// Тягнемо ручні кампанії + дані MyDrop + ручні призначення категорій по заказу і перемальовуємо.
 (async function(){
+  try{ ORDCAT = await fetch(FB+"/shop-reports/ads-ord-cat.json").then(function(r){return r.json();})||{}; }catch(e){ ORDCAT={}; }
   try{ MFB   = await fetch(FB+"/shop-reports/ads-fb-manual.json").then(function(r){return r.json();})||{}; }catch(e){ MFB={}; }
   try{ MDROP = await fetch(FB+"/shop-reports/mydrop.json").then(function(r){return r.json();})||{}; }catch(e){ MDROP={}; }
   if(typeof render==="function") render();
