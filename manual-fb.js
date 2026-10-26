@@ -77,11 +77,18 @@ async function setOrdCat(src,ext,val){
 // Ручне призначення РЕКЛАМНОЇ КАМПАНІЇ по КОНКРЕТНОМУ заказу (по номеру заказу).
 // Зберігається в shop-reports/ads-ord-camp[src][ext]=назва кампанії. Якщо раптом заказ
 // залетів не в ту кампанію — обираєш правильну, і він переноситься туди.
-async function setOrdCamp(src,ext,val){
+async function setOrdCamp(src,ext,val,selEl){
   ORDCAMP[src]=ORDCAMP[src]||{};
   if(val) ORDCAMP[src][ext]=val; else delete ORDCAMP[src][ext];
   try{ await fetch(FB+"/shop-reports/ads-ord-camp/"+enc(src)+"/"+enc(ext)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(val||null)}); }catch(e){}
-  render();
+  // НЕ перемальовуємо все (щоб не збивати відкриті кампанії) — лише помічаємо картку:
+  // при виборі кампанії картка гасне + зʼявляється мітка «→ Кампанія». Нові цифри застосуються
+  // при наступному оновленні/зміні періоду. Так можна швидко чистити багато товарів підряд.
+  if(selEl){ var met=selEl.parentNode, card=selEl.closest(".ocard");
+    var old=met.querySelector(".ordcamp-tag"); if(old) old.remove();
+    if(val){ if(card){ card.style.opacity="0.5"; } var tag=document.createElement("span"); tag.className="ap g ordcamp-tag"; tag.style.marginLeft="6px"; tag.textContent="→ "+val; met.appendChild(tag); }
+    else { if(card){ card.style.opacity=""; } }
+  }
 }
 // Опції селекта кампаній для магазину (з поточною вибраною).
 function campOptsSel(src,sel){
