@@ -43,11 +43,36 @@ function repToggleOrders(key){
   repOrdersOpen.has(key) ? repOrdersOpen.delete(key) : repOrdersOpen.add(key);
   repRenderAll();
 }
-async function repSetOrderSrc(oid, src, el){
+var REP_FIELDS = ["leads","approved","notCounted","margin","sales","refused","inWork","novi","kcAppr","notApproved","loss","duplicates","revenue"];
+function repFbUrl(p){ return REP_FB + "/" + p.split("/").map(encodeURIComponent).join("/") + ".json"; }
+// Перерахунок денної ячейки магазину з поордерних записів (так само, як у вебхуку).
+async function repRecomputeCell(src, day){
+  var ords = (await fetch(repFbUrl("shop-reports/mydrop-orders/" + src + "/" + day)).then(function(r){ return r.json(); })) || {};
+  var ids = Object.keys(ords);
+  if (!ids.length){ await fetch(repFbUrl("shop-reports/mydrop/" + src + "/" + day), {method:"DELETE"}); return; }
+  var agg = {}; REP_FIELDS.forEach(function(k){ agg[k] = 0; });
+  ids.forEach(function(id){ var c = ords[id] || {}; REP_FIELDS.forEach(function(k){ agg[k] += Number(c[k]) || 0; }); });
+  agg.margin = Math.round(agg.margin * 100) / 100; agg.loss = Math.round(agg.loss * 100) / 100; agg.revenue = Math.round(agg.revenue * 100) / 100;
+  await fetch(repFbUrl("shop-reports/mydrop/" + src + "/" + day), {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(agg)});
+}
+// Миттєвий перенос заказу: з ячейки fromSrc/day у src/day + перерахунок обох + вказівник + переопределення.
+async function repMoveOrder(oid, fromSrc, day, src){
+  var rec = await fetch(repFbUrl("shop-reports/mydrop-orders/" + fromSrc + "/" + day + "/" + oid)).then(function(r){ return r.json(); });
+  if (!rec) return false;
+  await fetch(repFbUrl("shop-reports/mydrop-orders/" + src + "/" + day + "/" + oid), {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(rec)});
+  await fetch(repFbUrl("shop-reports/mydrop-orders/" + fromSrc + "/" + day + "/" + oid), {method:"DELETE"});
+  await repRecomputeCell(fromSrc, day);
+  await repRecomputeCell(src, day);
+  await fetch(repFbUrl("shop-reports/mydrop-order-loc/" + oid), {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({src: src, day: day})});
+  return true;
+}
+async function repSetOrderSrc(oid, src, el, fromSrc, day){
   REP_ORDSRC = REP_ORDSRC || {};
   if (src) REP_ORDSRC[oid] = src; else delete REP_ORDSRC[oid];
   try{ await fetch(REP_FB + "/shop-reports/mydrop-order-src/" + encodeURIComponent(oid) + ".json",
     {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(src || null)}); }catch(e){}
+  // переносимо одразу (не чекаючи щогодинного перерахунку)
+  if (src && fromSrc && day && src !== fromSrc){ try{ if (await repMoveOrder(oid, fromSrc, day, src) && el) el.dataset.from = src; }catch(e){} }
   // без перемалювання: лише мітка на рядку
   if (el){
     var row = el.closest(".rep-ord-row");
@@ -79,15 +104,15 @@ async function repFillOrders(key, box){
       var money = i.total ? Math.round(i.total) : (c.revenue ? Math.round(c.revenue) : 0);
       return '<div class="rep-ord-row" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border-2,#e5e5e3)">'
         + '<span style="font-family:JetBrains Mono,monospace;font-weight:600">№ ' + (i.no || r.oid) + '</span>'
-        + '<span style="flex:1;min-width:220px">' + (i.prod ? i.prod : '<span class="hint">(товар підтягнеться після наступного оновлення даних)</span>') + '</span>'
+        + '<span style="flex:1;min-width:220px">' + (i.prod ? i.prod : '<span class="hint">—</span>') + '</span>'
         + '<span style="font-family:JetBrains Mono,monospace">' + (money ? money + ' ₴' : '') + '</span>'
         + '<span style="color:var(--text-muted,#999)">' + st + '</span>'
         + '<span style="color:var(--text-muted,#999)">' + r.day + '</span>'
-        + '<select onchange="repSetOrderSrc(\'' + r.oid + '\',this.value,this)" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border-2,#e5e5e3);max-width:230px;font-size:12px">' + repShopOptions(src, cur) + '</select>'
+        + '<select data-from="' + src.replace(/"/g, "&quot;") + '" data-day="' + r.day + '" onchange="repSetOrderSrc(\'' + r.oid + '\',this.value,this,this.dataset.from,this.dataset.day)" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border-2,#e5e5e3);max-width:230px;font-size:12px">' + repShopOptions(src, cur) + '</select>'
         + (cur ? '<span class="rep-ord-tag" style="margin-left:8px;color:#0E7C5A;font-weight:600">→ ' + repShopNameOfSrc(cur) + '</span>' : '')
         + '</div>';
     }).join("");
-    box.innerHTML = '<div class="hint" style="margin:6px 0">Заказів за період: <b>' + rows.length + '</b>. Обери магазин — заказ переїде туди при наступному оновленні даних (щогодини) або при будь-якій зміні заказу в MyDrop.</div>' + html;
+    box.innerHTML = '<div class="hint" style="margin:6px 0">Заказів за період: <b>' + rows.length + '</b>. Обери магазин — заказ одразу переїде туди (цифри магазинів оновляться після «🔄 Оновити дані»).</div>' + html;
   }catch(e){ box.innerHTML = '<div class="hint">Не вдалося завантажити: ' + e.message + '</div>'; }
 }
 function repInjectOrdersUI(){
