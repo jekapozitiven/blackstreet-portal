@@ -2305,23 +2305,23 @@ async function repRenderPayStats(){
   for(const src in repPayAdsCache){ const tree=repPayAdsCache[src]; if(!tree||typeof tree!=="object")continue;
     for(const day in tree){ if(day<f||day>t)continue; const ords=tree[day]; if(!ords)continue;
       for(const oid in ords){ const o=ords[oid]; if(!o)continue;
-        const g=G[o.pay]||G.cod; g.n++; if(+o.approved)g.ap++; if(+o.sold)g.sold++;
+        const g=G[o.pay]||G.cod; g.n++; if(+o.approved)g.ap++; if(+o.sold)g.sold++; if(+o.refused)g.ref=(g.ref||0)+1;
         if(o.pay==="deposit") g.dep=(g.dep||0)+(+o.depAmt||0);
       }}}
-  const bo=g=>g.ap?Math.round(g.sold/g.ap*100):0;
+  const bo=g=>g.ap?Math.round((g.ap-(g.ref||0))/g.ap*100):0;
   const boCol=g=>{const v=bo(g);return v>=60?"#0E7C5A":(v?"#C2453B":"#999");};
   let rCount=0,rSum=0;
   for(const day in (repPayRetCache||{})){ if(day<f||day>t)continue; const c=repPayRetCache[day]||{}; rCount+=+c.count||0; rSum+=+c.sum||0; }
   const card=(title,g,extra)=>`<div class="kpi"><div class="kpi-lbl">${title}</div>
     <div class="kpi-val">${fmt(g.n)} <span style="font-size:12px;color:var(--text-muted)">зак.</span></div>
-    <div class="kpi-sub">апрув ${fmt(g.ap)} · викуп <b style="color:${boCol(g)}">${g.ap?bo(g)+"%":"—"}</b>${extra||""}</div></div>`;
+    <div class="kpi-sub">апрув ${fmt(g.ap)} · не апрув ${fmt(g.n-g.ap)}<br>викуп <b style="color:${boCol(g)}">${g.ap?bo(g)+"%":"—"}</b> · не забрали ${fmt(g.ref||0)} · забрали ${fmt(g.sold)} · в дорозі ${fmt(g.ap-g.sold-(g.ref||0))}${extra||""}</div></div>`;
   el.innerHTML =
     card("Задаток", G.deposit, G.deposit.dep?`<br>сума задатків ${fmt(G.deposit.dep)} ₴`:"") +
     card("Повна оплата", G.full, "") +
     card("Накладений платіж", G.cod, "") +
     `<div class="kpi"><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:#C2453B">${fmt(rCount)}</div><div class="kpi-sub">сума ${fmt(rSum)} ₴ · з Google-таблиці</div></div>`;
   const hint=document.getElementById("rep-paytype-hint");
-  if(hint) hint.textContent="Викуп % = викуплено ÷ апрув. Задаток — за приміткою MyDrop, повна оплата — статус «Оплачен», решта — накладений платіж. Повернення — з Google-таблиці за обраний період.";
+  if(hint) hint.textContent="Викуп % = (апрув − не забрали) ÷ апрув; «в дорозі» рахуються як забрані, поки не стали відмовою. Задаток — за приміткою MyDrop, повна оплата — статус «Оплачен», решта — накладений платіж. Повернення — з Google-таблиці за обраний період.";
 }
 function renderUpsellStats(){
   renderPrepayStats();
