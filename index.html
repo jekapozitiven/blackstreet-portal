@@ -1595,7 +1595,7 @@ function repGetDateRange(){
   if(repPeriod==="month"){ const s=new Date(today.getFullYear(), today.getMonth(),1); const e=new Date(today.getFullYear(), today.getMonth()+1,0); return [s,e]; }
   if(repPeriod==="prevMonth"){ const s=new Date(today.getFullYear(), today.getMonth()-1,1); const e=new Date(today.getFullYear(), today.getMonth(),0); return [s,e]; }
   if(repPeriod==="quarter"){ const qs=Math.floor(today.getMonth()/3)*3; const s=new Date(today.getFullYear(), qs,1); const e=new Date(today.getFullYear(), qs+3,0); return [s,e]; }
-  if(repPeriod==="custom" && repCustomStart && repCustomEnd) return [new Date(repCustomStart), new Date(repCustomEnd)];
+  if(repPeriod==="custom" && repCustomStart && repCustomEnd){ const p=s=>{const [y,m,d]=String(s).split("-").map(Number); const x=new Date(y,m-1,d); x.setHours(0,0,0,0); return x;}; return [p(repCustomStart), p(repCustomEnd)]; }
   return [null,null]; // all
 }
 
