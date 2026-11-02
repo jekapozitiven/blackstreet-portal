@@ -346,7 +346,7 @@ function renderTable(f,t){CURF=f;CURT=t;
     // усі кампанії цього магазину — для авто-маршрутизації заказів «без реклами»
     const shopCamps=new Set(ALLCAMPS.filter(c=>c.src===src).map(c=>c.camp));
     if(!adv.length){
-      body=`<tr><td class="empty" colspan="14">${isFbSrc(src)?"Поки немає заявок з Facebook — кампанії та заявки підтягнуться автоматично, коли підуть замовлення.":"Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі."}</td></tr>`;
+      body=`<tr><td class="empty" colspan="13">${isFbSrc(src)?"Поки немає заявок з Facebook — кампанії та заявки підтягнуться автоматично, коли підуть замовлення.":"Немає рекламованих категорій. Додай Google Ads-скрипт у цей акаунт — категорії підтягнуться самі."}</td></tr>`;
     } else if(grouped){ const ordCampSet=new Set(Object.values(ORDCAMP[src]||{}));
       const campVals=Object.values(cc).map(x=>x&&x.camp).filter(Boolean);
       const catchAll=campVals.find(n=>{const z=(n||"").toLowerCase();
@@ -481,7 +481,7 @@ function renderTable(f,t){CURF=f;CURT=t;
         <span class="t">заявок <b>${fmt(tot.leads)}</b> · апрув <b>${fmt(tot.approved)}</b> <span class="pct">${tpct}%</span> · ціна заявки <b>${tot.leads?fmt(tot.budget/tot.leads):"—"}</b> · ціна апрува <b>${tot.approved?fmt(tot.budget/tot.approved):"—"}</b> · маржа <b class="g">${fmt(tot.margin)} ₴</b> · бюджет <b class="bd">${fmt(tot.budget)} ₴</b></span></h2>
       <table><thead><tr>
         <th class="name">Категорія (реклама)</th><th>Заявки</th><th>Апрув</th><th>Маржа ₴</th>
-        <th>Викуп %</th><th>Бюджет ₴</th><th>Ціна заявки</th><th>Ціна заказу</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th><th>Допрод ₴</th>
+        <th>Викуп %</th><th>Бюджет ₴</th><th>Ціна заявки</th><th>Ціна заказу</th><th>ЗП ₴</th><th>Повернення ₴</th><th>ROAS</th><th>ROI</th><th>Чистими ₴</th>
       </tr></thead><tbody>${body}</tbody></table>${catBlock}${phoneBlock}</div>`;
   }
   // внизу — лише заказы, де магазин НЕ визначено (джерело в MyDrop ще не відмічено)
@@ -622,7 +622,7 @@ function roiClass(x){ return x<80?'r':(x<=100?'o':(x<=150?'g':'p')); }
 function metricCells(r){
   const apr=r.leads?Math.round(r.approved/r.leads*100):0;
   const d=calcNet(r);
-  const roas=r.budget?(r.sum||0)/r.budget:0;
+  const roas=r.budget?((r.sum||0)+(r.upsSum||0))/r.budget:0;
   const roi=r.budget?d.net/r.budget:0;
   const boP=Math.round(d.bo*100), roiP=Math.round(roi*100);
   const cpl=r.leads?r.budget/r.leads:0;        // ціна заявки = бюджет / заявки
@@ -639,7 +639,7 @@ function metricCells(r){
     <td class="m ${r.budget?roasClass(roas):''}">${r.budget?roas.toFixed(2)+'×':"—"}</td>
     <td class="m ${(r.budget&&d.hasBuy)?roiClass(roiP):''}">${(r.budget&&d.hasBuy)?roiP+'%':"—"}</td>
     <td class="m net ${d.hasBuy?(d.net>=0?'g':'r'):''}">${d.hasBuy?fmt(d.net):"—"}</td>
-    <td class="g">${fmt(r.upsSum)}</td>`;
+    `;
 }
 function cellsHtml(r){ return metricCells(r); }
 function campHtml(gr,cuid){
@@ -655,7 +655,7 @@ function rowHtml(r,isTot,src,sub,campId){
   if(!(r.leads>0)) return `<tr class="${cls}"${dc}${hid}><td class="name${sc}">${r.cat}</td>${cellsHtml(r)}</tr>`;
   const uid="r"+(ROWUID++); ROWMETA[uid]={src, wkeys:(r.wkeys||[]), camps:(Array.isArray(r.camps)?r.camps:null), phoneOids:(r.phoneOids&&r.phoneOids.length?r.phoneOids:null)};
   const main=`<tr class="${cls}"${dc}${hid}><td class="name exp${sc}" data-uid="${uid}"><span class="caret">▸</span>${r.cat}</td>${cellsHtml(r)}</tr>`;
-  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="14"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
+  const detail=`<tr class="detail" id="det-${uid}"${dc} style="display:none"><td colspan="13"><div id="box-${uid}"><span class="note">…</span></div></td></tr>`;
   return main+detail;
 }
 function attachExpand(){
