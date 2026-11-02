@@ -88,7 +88,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sa
 .p-grp input{background:0;border:0;color:var(--text);width:52px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;text-align:right;}
 
 /* KPIS */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px;} #rep-paytype-kpis{grid-template-columns:repeat(auto-fit,minmax(290px,1fr));} .pay-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;} .pay-bo{text-align:right;} .pay-bo-v{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:1;} .pay-bo-l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);font-weight:600;margin-top:4px;} .pay-bar{display:flex;height:6px;border-radius:4px;overflow:hidden;background:var(--border-2);margin:12px 0 10px;} .pay-bar span{display:block;height:100%;} .pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;} .pay-cell{background:var(--bg);border-radius:8px;padding:8px 10px;min-width:0;} .pay-cell-v{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;line-height:1.1;} .pay-cell-l{font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;}
 .kpi{background:var(--surface);border:1px solid var(--border-2);border-radius:12px;padding:16px 18px;}
 .kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;font-weight:600;}
 .kpi-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;line-height:1.1;}
@@ -2312,14 +2312,14 @@ async function repRenderPayStats(){
   const boCol=g=>{const v=bo(g);return v>=60?"#0E7C5A":(v?"#C2453B":"#999");};
   let rCount=0,rSum=0;
   for(const day in (repPayRetCache||{})){ if(day<f||day>t)continue; const c=repPayRetCache[day]||{}; rCount+=+c.count||0; rSum+=+c.sum||0; }
-  const card=(title,g,extra)=>`<div class="kpi"><div class="kpi-lbl">${title}</div>
-    <div class="kpi-val">${fmt(g.n)} <span style="font-size:12px;color:var(--text-muted)">зак.</span></div>
-    <div class="kpi-sub">апрув ${fmt(g.ap)} · не апрув ${fmt(g.n-g.ap)}<br>викуп <b style="color:${boCol(g)}">${g.ap?bo(g)+"%":"—"}</b> · не забрали ${fmt(g.ref||0)} · забрали ${fmt(g.sold)} · в дорозі ${fmt(g.ap-g.sold-(g.ref||0))}${extra||""}</div></div>`;
+  const cell=(v,l,c)=>`<div class="pay-cell"><div class="pay-cell-v"${c?` style="color:${c}"`:""}>${v}</div><div class="pay-cell-l">${l}</div></div>`; const card=(title,g,extra)=>{const ref=g.ref||0, tr=g.ap-g.sold-ref, pc=n=>g.ap?Math.max(0,n/g.ap*100):0; return `<div class="kpi"><div class="pay-head"><div><div class="kpi-lbl">${title}</div><div class="kpi-val">${fmt(g.n)} <span style="font-size:12px;color:var(--text-muted)">зак.</span></div></div><div class="pay-bo"><div class="pay-bo-v" style="color:${boCol(g)}">${g.ap?bo(g)+"%":"—"}</div><div class="pay-bo-l">викуп</div></div></div><div class="pay-bar" title="забрали / в дорозі / не забрали"><span style="width:${pc(g.sold)}%;background:var(--green)"></span><span style="width:${pc(tr)}%;background:var(--yellow)"></span><span style="width:${pc(ref)}%;background:var(--red)"></span></div><div class="pay-grid">${cell(fmt(g.ap),"апрув")}${cell(fmt(g.n-g.ap),"не апрув")}${cell(fmt(g.sold),"забрали","var(--green)")}${cell(fmt(tr),"в дорозі","var(--yellow)")}${cell(fmt(ref),"не забрали","var(--red)")}${extra||""}</div></div>`;};
+
+    
   el.innerHTML =
-    card("Задаток", G.deposit, G.deposit.dep?`<br>сума задатків ${fmt(G.deposit.dep)} ₴`:"") +
+    card("Задаток", G.deposit, G.deposit.dep?cell(fmt(G.deposit.dep)+" ₴","сума задатків"):"") +
     card("Повна оплата", G.full, "") +
     card("Накладений платіж", G.cod, "") +
-    `<div class="kpi"><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:#C2453B">${fmt(rCount)}</div><div class="kpi-sub">сума ${fmt(rSum)} ₴ · з Google-таблиці</div></div>`;
+    `<div class="kpi"><div class="pay-head"><div><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:var(--red)">${fmt(rCount)} <span style="font-size:12px;color:var(--text-muted)">зак.</span></div></div></div><div class="pay-grid" style="margin-top:28px">${cell(fmt(rSum)+" ₴","сума повернень")}${cell(rCount?fmt(Math.round(rSum/rCount))+" ₴":"—","середній чек")}${cell("Google","джерело")}</div></div>`;
   const hint=document.getElementById("rep-paytype-hint");
   if(hint) hint.textContent="Викуп % = (апрув − не забрали) ÷ апрув; «в дорозі» рахуються як забрані, поки не стали відмовою. Задаток — за приміткою MyDrop, повна оплата — статус «Оплачен», решта — накладений платіж. Повернення — з Google-таблиці за обраний період.";
 }
