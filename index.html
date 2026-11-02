@@ -2321,7 +2321,7 @@ async function repRenderPayStats(){
     card("Накладений платіж", G.cod, "") +
     `<div class="kpi"><div class="pay-head"><div><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:var(--red)">${fmt(rCount)} <span style="font-size:12px;color:var(--text-muted)">зак.</span></div></div></div><div class="pay-grid" style="margin-top:28px">${cell(fmt(rSum)+" ₴","сума повернень")}${cell(rCount?fmt(Math.round(rSum/rCount))+" ₴":"—","середній чек")}${cell("Google","джерело")}</div></div>`;
   const hint=document.getElementById("rep-paytype-hint");
-  if(hint) hint.textContent="Викуп % = (апрув − не забрали) ÷ апрув; «в дорозі» рахуються як забрані, поки не стали відмовою. Задаток — за приміткою MyDrop, повна оплата — статус «Оплачен», решта — накладений платіж. Повернення — з Google-таблиці за обраний період.";
+  if(hint) hint.textContent="Викуп % = (апрув − не забрали) ÷ апрув; «в дорозі» рахуються як забрані, поки не стали відмовою. Задаток — у примітці слово «завдаток» + сума, повна оплата — поле «Оплачено» в SalesDrive, решта — накладений платіж. Повернення — з Google-таблиці за обраний період.";
 }
 function renderUpsellStats(){
   renderPrepayStats();
