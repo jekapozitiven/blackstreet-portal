@@ -2306,7 +2306,7 @@ async function repRenderPayStats(){
     for(const day in tree){ if(day<f||day>t)continue; const ords=tree[day]; if(!ords)continue;
       for(const oid in ords){ const o=ords[oid]; if(!o)continue;
         const g=G[o.pay]||G.cod; g.n++; if(+o.approved)g.ap++; if(+o.sold)g.sold++; if(+o.refused)g.ref=(g.ref||0)+1;
-        if(o.pay==="deposit") g.dep=(g.dep||0)+(+o.depAmt||0);
+        if(o.pay==="deposit") g.dep=(g.dep||0)+(+o.depAmt||0); if(+o.depNote){ G.deposit.note=(G.deposit.note||0)+1; if(o.pay!=="deposit") G.deposit.noteNoDep=(G.deposit.noteNoDep||0)+1; }
       }}}
   const bo=g=>g.ap?Math.round((g.ap-(g.ref||0))/g.ap*100):0;
   const boCol=g=>{const v=bo(g);return v>=60?"#0E7C5A":(v?"#C2453B":"#999");};
@@ -2316,7 +2316,7 @@ async function repRenderPayStats(){
 
     
   el.innerHTML =
-    card("Задаток", G.deposit, G.deposit.dep?cell(fmt(G.deposit.dep)+" ₴","сума задатків"):"") +
+    card("Задаток", G.deposit, (G.deposit.dep?cell(fmt(G.deposit.dep)+" ₴","сума задатків"):"") + (G.deposit.note?cell(fmt(G.deposit.note),"згадок про задаток")+cell(fmt(G.deposit.noteNoDep||0)+pp(G.deposit.noteNoDep||0,G.deposit.note),"не скинули задаток","var(--red)"):"")) +
     card("Повна оплата", G.full, "") +
     card("Накладений платіж", G.cod, "") +
     `<div class="kpi"><div class="pay-head"><div><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:var(--red)">${fmt(rCount)} <span style="font-size:12px;color:var(--text-muted)">зак.</span></div></div></div><div class="pay-grid" style="margin-top:28px">${cell(fmt(rSum)+" ₴","сума повернень")}${cell(rCount?fmt(Math.round(rSum/rCount))+" ₴":"—","середній чек")}${cell("Google","джерело")}</div></div>`;
