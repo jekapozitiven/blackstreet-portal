@@ -58,7 +58,8 @@ window.repRenderPayStats = async function(){
   var card = function(title, g, extra){
     var ref = g.ref || 0, tr = Math.max(0, g.ap - g.sold - ref), pc = function(n){ return g.ap ? Math.max(0, n / g.ap * 100) : 0; };
     return '<div class="kpi"><div class="pay-head"><div><div class="kpi-lbl">' + title + '</div><div class="kpi-val">' + fmt(g.n) + ' <span style="font-size:12px;color:var(--text-muted)">зак.</span></div></div>'
-      + '<div class="pay-bo"><div class="pay-bo-v" style="color:' + boCol(g) + '">' + (g.ap ? bo(g) + '%' : '—') + '</div><div class="pay-bo-l">викуп</div></div></div>'
+      + '<div class="pay-bo"><div class="pay-bo-v" style="color:' + boCol(g) + '">' + (g.ap ? bo(g) + '%' : '—') + '</div><div class="pay-bo-l">викуп від апрув</div>'
+      + '<div class="pay-bo-l" style="margin-top:2px;text-transform:none;letter-spacing:0">по завершених: <b style="color:var(--text)">' + ((g.sold + ref) ? Math.round(g.sold / (g.sold + ref) * 100) + '%' : '—') + '</b> (' + fmt(g.sold) + ' / ' + fmt(g.sold + ref) + ')</div></div></div>'
       + '<div class="pay-bar" title="забрали / в дорозі / не забрали"><span style="width:' + pc(g.sold) + '%;background:var(--green)"></span><span style="width:' + pc(tr) + '%;background:var(--yellow)"></span><span style="width:' + pc(ref) + '%;background:var(--red)"></span></div>'
       + '<div class="pay-grid">' + cell(fmt(g.ap) + pp(g.ap, g.n), 'апрув') + cell(fmt(g.n - g.ap) + pp(g.n - g.ap, g.n), 'не апрув')
       + (totAp ? cell(Math.round(g.ap / totAp * 100) + '%', 'частка від усіх апрувів') : '')
@@ -70,7 +71,7 @@ window.repRenderPayStats = async function(){
     card('Накладений платіж', G.cod, '') +
     '<div class="kpi"><div class="pay-head"><div><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:var(--red)">' + fmt(rCount) + ' <span style="font-size:12px;color:var(--text-muted)">зак.</span></div></div></div><div class="pay-grid" style="margin-top:28px">' + cell(fmt(rSum) + ' ₴', 'сума повернень') + cell(rCount ? fmt(Math.round(rSum / rCount)) + ' ₴' : '—', 'середній чек') + cell('Google', 'джерело') + '</div></div>';
   var hint = document.getElementById("rep-paytype-hint");
-  if (hint) hint.textContent = "По обраних магазинах (статуси MyDrop). Апрув = апрув-статуси; «не апрув» = «Не учитываем»; забрали = продажа; «не забрали» = відмова; в дорозі = решта апрувнутих. Викуп % = (апрув − не забрали) ÷ апрув. Задаток — «завдаток» + сума, або слово «завдаток» і статус «Не учитываем». Повна оплата — поле «Оплачено» в SalesDrive, решта — накладений платіж. Повернення — з Google-таблиці (усі магазини).";
+  if (hint) hint.textContent = "По обраних магазинах (статуси MyDrop). Апрув = апрув-статуси; «не апрув» = «Не учитываем»; забрали = продажа; «не забрали» = відмова; в дорозі = решта апрувнутих. Викуп від апрув = (апрув − не забрали) ÷ апрув («в дорозі» рахуються як забрані); по завершених = забрали ÷ (забрали + не забрали). Задаток — «завдаток» + сума, або слово «завдаток» і статус «Не учитываем». Повна оплата — поле «Оплачено» в SalesDrive, решта — накладений платіж. Повернення — з Google-таблиці (усі магазини).";
   // після першого завантаження даних магазинів — перемалювати основні картки (ЗП за допродажі залежить від фільтра)
   if (repPayLoadedNew && !repPayAllSelected()){ repPayLoadedNew = false; setTimeout(function(){ try{ repRenderAll(); }catch(e){} }, 0); }
   repPayLoadedNew = false;
