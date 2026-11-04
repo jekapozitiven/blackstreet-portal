@@ -1603,7 +1603,7 @@ function repRenderGroupPills(){
   const groups = [
     {k:"all",label:"Усі"},
     {k:"Google",label:"Сайти (Google)"},
-    {k:"Prom",label:"Prom"},
+    {k:"Prom",label:"Prom"}, {k:"Facebook",label:"Facebook"},
   ];
   document.getElementById("rep-group-pills").innerHTML = groups.map(g=>
     `<button class="rep-chip" onclick="repApplyGroup('${g.k}')">${g.label}</button>`
@@ -1635,7 +1635,7 @@ function repShopsAll(on){
 }
 // закриваємо випадаючий список по кліку поза ним
 document.addEventListener("click", function(e){
-  if(!repShopsDropdownOpen) return;
+  if(!repShopsDropdownOpen || !e.target.isConnected) return;
   const dd = document.getElementById("rep-src-dropdown");
   const btn = document.getElementById("rep-shops-btn");
   if(dd && btn && !dd.contains(e.target) && !btn.contains(e.target)){
