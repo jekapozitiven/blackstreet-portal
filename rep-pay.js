@@ -15,6 +15,20 @@ var REP_PAY_SRC = {
   "Prom-Street Code|Prom": "Prom-Street Code", "Промокод|Промо": "Промокод", "(без джерела)|—": "(не указан)"
 };
 var repPayMd = {}, repPayC2 = null, repPayRet2 = null, repPaySkip = false, repPayLoadedNew = false;
+// ── Контроль версій серверних скриптів (shop-reports/versions/<job> пишуть самі скрипти при запуску) ──
+var REP_REQ_VER = { ads: "2026-11-07.1", mydrop: "2026-11-07.1" };
+async function repPayVersionBanner(el){
+  var v = (await fbRestGet("shop-reports/versions")) || {};
+  var bad = [];
+  if (!v.ads || v.ads.ver < REP_REQ_VER.ads) bad.push("збирач реклами (ads): " + (v.ads ? v.ads.ver : "версія не пишеться — стара копія") + ", потрібна " + REP_REQ_VER.ads);
+  if (!v.mydrop || v.mydrop.ver < REP_REQ_VER.mydrop) bad.push("статистика MyDrop (stats.py): " + (v.mydrop ? v.mydrop.ver : "версія не пишеться — стара копія") + ", потрібна " + REP_REQ_VER.mydrop);
+  var old = document.getElementById("rep-ver-banner"); if (old) old.remove();
+  if (!bad.length) return;
+  var b = document.createElement("div"); b.id = "rep-ver-banner";
+  b.style.cssText = "margin:0 0 12px;padding:10px 14px;border-radius:10px;background:#FDECEC;border:1px solid #F3B4B4;color:#B91C1C;font-size:13px;font-weight:600";
+  b.innerHTML = "⚠ На сервері стоїть СТАРА версія: " + bad.join("; ") + ". Цифри нижче неповні, доки не встановлено актуальний пакет (⚙ → «Обновить приложение»).";
+  el.parentNode.insertBefore(b, el);
+}
 function repPaySelSrcs(){ var out = []; repSelKeys.forEach(function(k){ var s = REP_PAY_SRC[k] || k.split("|")[0]; if (out.indexOf(s) < 0) out.push(s); }); return out; }
 function repPayAllSelected(){ return (repSources || []).every(function(s){ return repSelKeys.has(s.name + "|" + s.ch); }); }
 window.repEnsurePayData = async function(force){ if (force){ repPayMd = {}; repPayC2 = null; repPayRet2 = null; } };
@@ -31,6 +45,7 @@ window.repRenderPayStats = async function(){
   if (repPaySkip) return;
   var el = document.getElementById("rep-paytype-kpis"); if (!el) return;
   var srcs = repPaySelSrcs();
+  try{ await repPayVersionBanner(el); }catch(e){}
   await repPayLoad(srcs);
   var rg = repGetDateRange() || [null, null];
   var f = rg[0] ? repYmd(rg[0]) : "0000-00-00", t = rg[1] ? repYmd(rg[1]) : "9999-99-99";
