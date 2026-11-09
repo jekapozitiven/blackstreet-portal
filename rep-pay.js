@@ -110,3 +110,13 @@ var repPayOrigRenderUpsell = window.renderUpsellStats;
 window.renderUpsellStats = function(){
   window.repRenderPayStats().then(function(){ repPaySkip = true; try{ repPayOrigRenderUpsell(); } finally { repPaySkip = false; } });
 };
+// ── Запам'ятовуємо вибір магазинів між оновленнями сторінки ──
+var REP_SEL_LS = "rep-selkeys";
+function repSelSave(){ try{ localStorage.setItem(REP_SEL_LS, JSON.stringify(Array.from(repSelKeys))); }catch(e){} }
+(function(){
+  try{ var v = JSON.parse(localStorage.getItem(REP_SEL_LS) || "null"); if (Array.isArray(v) && v.length){ repSelKeys = new Set(v); } }catch(e){}
+  ["repToggleSrc", "repApplyGroup", "repShopsAll"].forEach(function(name){
+    var orig = window[name]; if (typeof orig !== "function") return;
+    window[name] = function(){ var r = orig.apply(this, arguments); repSelSave(); return r; };
+  });
+})();
