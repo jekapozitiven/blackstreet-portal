@@ -298,7 +298,7 @@ function aggCats(src,f,t){if(isFbSrc(src)){var fbOut={},a=ADS[src]||{};for(var d
 
 function render(){
   const f=el("from").value, t=el("to").value;
-  try{ localStorage.setItem("rek-period", JSON.stringify({from:f,to:t})); }catch(e){}
+  if(f&&t){ try{ localStorage.setItem("rek-period", JSON.stringify({from:f,to:t})); }catch(e){} }
   if(el("mapView").style.display!=="none"){ renderMap(f,t); }
   else { renderTable(f,t); }
   el("status").textContent="Оновлено: "+new Date().toLocaleString("uk-UA");
