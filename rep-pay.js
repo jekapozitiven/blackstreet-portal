@@ -77,10 +77,12 @@ window.repRenderPayStats = async function(){
       + '<div class="pay-bo-l" style="margin-top:2px;text-transform:none;letter-spacing:0">по завершених: <b style="color:var(--text)">' + ((g.sold + ref) ? Math.round(g.sold / (g.sold + ref) * 100) + '%' : '—') + '</b> (' + fmt(g.sold) + ' / ' + fmt(g.sold + ref) + ')</div></div></div>'
       + '<div class="pay-bar" title="забрали / в дорозі / не забрали"><span style="width:' + pc(g.sold) + '%;background:var(--green)"></span><span style="width:' + pc(tr) + '%;background:var(--yellow)"></span><span style="width:' + pc(ref) + '%;background:var(--red)"></span></div>'
       + '<div class="pay-grid">' + cell(fmt(g.ap) + pp(g.ap, g.n), 'апрув') + cell(fmt(g.n - g.ap) + pp(g.n - g.ap, g.n), 'не апрув')
-      + (totAp ? cell(Math.round(g.ap / totAp * 100) + '%', 'частка від усіх апрувів') : '')
+      + ((totAp && g !== ALL) ? cell(Math.round(g.ap / totAp * 100) + '%', 'частка від усіх апрувів') : '')
       + cell(fmt(g.sold), 'забрали', 'var(--green)') + cell(fmt(tr), 'в дорозі', 'var(--yellow)') + cell(fmt(ref), 'не забрали', 'var(--red)') + (extra || '') + '</div></div>';
   };
+  var ALL = { n: G.deposit.n + G.full.n + G.cod.n, ap: G.deposit.ap + G.full.ap + G.cod.ap, sold: G.deposit.sold + G.full.sold + G.cod.sold, ref: (G.deposit.ref||0) + (G.full.ref||0) + (G.cod.ref||0) };
   el.innerHTML =
+    card('Усі замовлення — викуп', ALL, '') +
     card('Задаток', G.deposit, G.deposit.dep ? cell(fmt(G.deposit.dep) + ' ₴', 'сума задатків') : '') +
     card('Повна оплата', G.full, '') +
     card('Накладений платіж', G.cod, '') +
