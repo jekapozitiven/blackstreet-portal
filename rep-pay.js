@@ -16,7 +16,7 @@ var REP_PAY_SRC = {
 };
 var repPayMd = {}, repPayC2 = null, repPayRet2 = null, repPaySkip = false, repPayLoadedNew = false;
 // ── Контроль версій серверних скриптів (shop-reports/versions/<job> пишуть самі скрипти при запуску) ──
-var REP_REQ_VER = { ads: "2026-11-09.1", mydrop: "2026-11-07.1" };
+var REP_REQ_VER = { ads: "2026-11-09.2", mydrop: "2026-11-07.1" };
 async function repPayVersionBanner(el){
   var v = (await fbRestGet("shop-reports/versions")) || {};
   var bad = [];
