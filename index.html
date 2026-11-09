@@ -1532,7 +1532,7 @@ async function repReload(){
   repRows = rows;
   try{ LS.set(REP_ROWS_CACHE_KEY, repRowsToArchive(repRows)); }catch(e){}
   if(repSelKeys.size===0){ repSources.forEach(s=>repSelKeys.add(s.name+"|"+s.ch)); }
-  if(rows.some(r=>r.name===NOSRC_NAME)) repSelKeys.add(NOSRC_KEY); // "без джерела" завжди в тоталі
+  if(rows.some(r=>r.name===NOSRC_NAME) && !localStorage.getItem("rep-selkeys")) repSelKeys.add(NOSRC_KEY); // "без джерела" завжди в тоталі
   repLoading = false;
   if(st) st.textContent = errs.length ? ("⚠ " + errs.join(", ")) : ("MyDrop • " + new Date().toLocaleTimeString("uk-UA"));
   repRenderAll();
