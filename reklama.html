@@ -792,7 +792,7 @@ function renderMap(f,t){
   let html=`<div style="margin:0 2px 12px"><button id="autoBtn">✨ Авто-підбір</button>
     <button class="ghost" id="autoAllBtn" style="margin-left:8px">🔄 Переприв'язати все</button>
     <span class="note" style="margin-left:8px">«Авто-підбір» — заповнює лише порожні; «Переприв'язати все» — переразкладає всі заново (перезапис)</span></div>`;
-  for(const src of srcs){ if(typeof isManualFb==="function" && isManualFb(src)){ html+=manualFbCard(src,f,t); const _mc=mfbCamps(src); for(const _c of _mc){ const _v=mfbVals(src,_c.key,f,t); grand.leads+=+_v.leads||0; grand.approved+=+_v.approved||0; grand.margin+=+_v.margin||0; grand.budget+=+_v.budget||0; } continue; }
+  for(const src of srcs){ if(typeof isManualFb==="function" && isManualFb(src)){ continue; }   // ручні FB-кампанії не мають привʼязки категорій (раніше тут падало: grand is not defined)
     const adv=advCats(src), m=(MAP[src]||{});
     const orders=aggCats(src,null,null); autoMapOrders(src,orders);   // всі наші категорії за весь час — зліва
     const ocs=Object.values(orders).sort((a,b)=>b.leads-a.leads);
