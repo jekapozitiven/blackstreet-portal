@@ -179,10 +179,12 @@ async function loadData(){ try{ FBBUD = await fetch(FB+"/shop-reports/ads-fb-bud
     fetch(FB+"/shop-reports/ads-sku-cat.json").then(r=>r.json()),   // ручні призначення категорії по артикулу
   ]);
   ADS=a||{}; GCAT=g||{}; MAP=m||{}; GCATCAMP=cc||{}; GCATCAMPDAY=ccd||{}; GCATCAMPCOST=ccc||{};
+  try{ GALIAS = await fetch(FB+"/shop-reports/ads-gcat-alias.json").then(r=>r.json())||{}; }catch(e){ GALIAS={}; }
+  MAP_RAW=JSON.parse(JSON.stringify(MAP)); GRAW={GCAT,GCATCAMP,GCATCAMPDAY,GCATCAMPCOST}; applyGAlias();
   const aoTree=po||{};
   ORDCACHE=aoTree;                       // пер-ордери кешуємо одразу (щоб показати номери заказів «без реклами»)
   PHONEORD=aoTree[PHONE_SRC]||{};
-  PHONEASSIGN=pa||{}; CATASSIGN=(ca||{}); SKUCAT=(sk||{}); ALLCAMPS=buildAllCamps();
+  PHONEASSIGN=pa||{}; CATASSIGN=(ca||{}); SKUCAT=(sk||{}); remapSkuCat(); ALLCAMPS=buildAllCamps();
   if(st&&typeof st==="object"){ SETTINGS={buyout:(st.buyout==null?null:+st.buyout), returnCost:+st.returnCost||0, zpRate:(st.zpRate==null?24:+st.zpRate)}; }
   // заповнити поля панелі
   el("cfgBuyout").value = SETTINGS.buyout==null?"":SETTINGS.buyout;
@@ -202,6 +204,50 @@ async function loadOrders(src){
   try{ tree=await fetch(FB+"/shop-reports/ads-ord/"+enc(src)+".json").then(r=>r.json())||{}; }catch(e){}
   ORDCACHE[src]=tree||{}; return ORDCACHE[src];
 }
+
+// ---- Об'єднання категорій Google (UA/RU фіди + перейменування) ----
+// shop-reports/ads-gcat-alias[src][gKey]=ключ «головної» категорії групи. Бюджет/кампанії всіх ключів групи
+// сумуються в головну, привʼязки (ads-map2, ads-sku-cat) переводяться на головну. Суми не змінюються — лише рядки.
+let GALIAS = {}, GRAW = null;
+function gRoot(src,k){ if(!k)return k; const a=GALIAS[src]||{}; let r=k, n=0; while(a[r]&&a[r]!==r&&n<10){ r=a[r]; n++; } return r; }
+function gNorm(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
+function applyGAlias(){
+  const R=GRAW; const G={}, CC={}, CD={}, CO={}; MAP_AUTO={};
+  for(const src of new Set([...Object.keys(R.GCAT),...Object.keys(R.GCATCAMP),...Object.keys(R.GCATCAMPDAY),...Object.keys(R.GCATCAMPCOST)])){
+    const al=GALIAS[src]; const g=R.GCAT[src]||{}, cc=R.GCATCAMP[src]||{}, cd=R.GCATCAMPDAY[src]||{}, co=R.GCATCAMPCOST[src]||{};
+    if(!al||!Object.keys(al).length){ G[src]=g; CC[src]=cc; CD[src]=cd; CO[src]=co; continue; }
+    const g2={}, cc2={}, cd2={}, co2={}, dayCost={};
+    for(const k in g){ const r=gRoot(src,k); const o=g2[r]||(g2[r]={name:(g[r]&&g[r].name)||r});
+      for(const d in g[k]){ if(d==="name")continue; o[d]=(+o[d]||0)+(+g[k][d]||0); } }
+    for(const k in cc){ const r=gRoot(src,k), v=cc[k]; if(!v)continue; const cur=cc2[r];
+      if(!cur || String(v.lastDate||"")>String(cur.lastDate||"") || (k===r && String(v.lastDate||"")===String(cur.lastDate||""))) cc2[r]=Object.assign({},v); }
+    for(const k in cd){ const r=gRoot(src,k), cost=g[k]||{}; const o=cd2[r]||(cd2[r]={}), dc=dayCost[r]||(dayCost[r]={});
+      for(const d in cd[k]){ if(d==="name")continue; const c=+cost[d]||0; if(!(d in o) || c>dc[d]){ o[d]=cd[k][d]; dc[d]=c; } } }
+    for(const k in co){ const r=gRoot(src,k), v=co[k]||{}; const o=co2[r]||(co2[r]={name:(co[r]&&co[r].name)||(g[r]&&g[r].name)||r,camps:{}});
+      for(const mk in (v.camps||{})){ const cm=v.camps[mk]||{}; const t=o.camps[mk]||(o.camps[mk]={camp:cm.camp||mk,days:{}});
+        for(const d in (cm.days||{})) t.days[d]=(+t.days[d]||0)+(+cm.days[d]||0); } }
+    G[src]=g2; CC[src]=cc2; CD[src]=cd2; CO[src]=co2;
+    // привʼязки заказів -> головна категорія; заказ без привʼязки — до категорії Google з тією ж назвою
+    const m=MAP[src]=Object.assign({},MAP[src]||{});
+    for(const wc in m){ if(m[wc]) m[wc]=gRoot(src,m[wc]); }
+    const byName={}; for(const k in g){ byName[gNorm(g[k].name||k)]=gRoot(src,k); byName[gNorm(k)]=gRoot(src,k); }
+    MAP_AUTO[src]=byName;
+  }
+  GCAT=G; GCATCAMP=CC; GCATCAMPDAY=CD; GCATCAMPCOST=CO;
+}
+let MAP_AUTO = {};   // [src][назва категорії] -> ключ Google (тільки для магазинів з таблицею об'єднання)
+function autoMapOrders(src,orders){ const by=MAP_AUTO[src]; if(!by)return; const m=MAP[src]=MAP[src]||{};
+  for(const wc in orders){ if(m[wc])continue; const k=by[gNorm(orders[wc].cat||wc)]||by[gNorm(wc)]; if(k) m[wc]=k; } }
+function remapSkuCat(){ for(const src in SKUCAT){ if(!GALIAS[src])continue; const s=SKUCAT[src]||{}; for(const sku in s){ if(s[sku]) s[sku]=gRoot(src,s[sku]); } } }
+async function saveGAlias(src,k,target){
+  GALIAS[src]=GALIAS[src]||{};
+  if(target && target!==k && gRoot(src,target)!==k){ GALIAS[src][k]=target; } else { delete GALIAS[src][k]; target=null; }
+  el("status").textContent="Збереження…";
+  try{ await fetch(FB+"/shop-reports/ads-gcat-alias/"+enc(src)+"/"+enc(k)+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(target||null)});
+       el("status").textContent="Збережено ✓ "+new Date().toLocaleTimeString("uk-UA"); }catch(e){ el("status").textContent="Помилка збереження"; }
+  MAP=JSON.parse(JSON.stringify(MAP_RAW)); applyGAlias(); remapSkuCat(); ALLCAMPS=buildAllCamps(); render();
+}
+let MAP_RAW = {};
 
 function bounds(){
   let mn=null,mx=null;
@@ -275,7 +321,7 @@ function advCats(src){if(isFbSrc(src)){var seen={},a=ADS[src]||{};MAP[src]=MAP[s
 function effCat(src,o){
   let ck=o.catKey||"_no_cat", cn=o.catName||ck;
   const sku=(o.items&&o.items[0]&&o.items[0].sku)||"";
-  const ex=(o.ext!=null?String(o.ext):""); const ov=(ex&&ORDCAT[src]&&ORDCAT[src][ex])||(sku&&SKUCAT[src]&&SKUCAT[src][sku]);
+  const ex=(o.ext!=null?String(o.ext):""); const ov=gRoot(src,(ex&&ORDCAT[src]&&ORDCAT[src][ex])||(sku&&SKUCAT[src]&&SKUCAT[src][sku])||"");
   if(ov){ ck="_ovr_"+ov; cn=(GCAT[src]&&GCAT[src][ov]&&GCAT[src][ov].name)||ov;
     MAP[src]=MAP[src]||{}; MAP[src][ck]=ov; }   // щоб рендер відправив заказ у рекламну категорію ov (і її кампанію)
   return {ck,cn};
@@ -319,7 +365,7 @@ function renderTable(f,t){CURF=f;CURT=t;
   }
   for(const src of srcs){ if(typeof isManualFb==="function" && isManualFb(src)){ html+=manualFbCard(src,f,t); const _mc=mfbCamps(src); for(const _c of _mc){ const _v=mfbVals(src,_c.key,f,t); grand.leads+=+_v.leads||0; grand.approved+=+_v.approved||0; grand.margin+=+_v.margin||0; grand.budget+=+_v.budget||0; } continue; }
     const adv=advCats(src), g=(GCAT[src]||{}), m=(MAP[src]||{}), cc=(GCATCAMP[src]||{}), ccost=(GCATCAMPCOST[src]||{});
-    const orders=aggCats(src,f,t);
+    const orders=aggCats(src,f,t); autoMapOrders(src,orders);
     const advSet=new Set(adv.map(a=>a.key));
     const advName=k=>{const a=adv.find(x=>x.key===k);return a?a.name:((g[k]&&g[k].name)||k);};
     const grouped = Object.keys(cc).length>0 || Object.keys(ccost).length>0;
@@ -748,7 +794,7 @@ function renderMap(f,t){
     <span class="note" style="margin-left:8px">«Авто-підбір» — заповнює лише порожні; «Переприв'язати все» — переразкладає всі заново (перезапис)</span></div>`;
   for(const src of srcs){ if(typeof isManualFb==="function" && isManualFb(src)){ html+=manualFbCard(src,f,t); const _mc=mfbCamps(src); for(const _c of _mc){ const _v=mfbVals(src,_c.key,f,t); grand.leads+=+_v.leads||0; grand.approved+=+_v.approved||0; grand.margin+=+_v.margin||0; grand.budget+=+_v.budget||0; } continue; }
     const adv=advCats(src), m=(MAP[src]||{});
-    const orders=aggCats(src,null,null);   // всі наші категорії за весь час — зліва
+    const orders=aggCats(src,null,null); autoMapOrders(src,orders);   // всі наші категорії за весь час — зліва
     const ocs=Object.values(orders).sort((a,b)=>b.leads-a.leads);
     const opts=adv.map(a=>`<option value="${a.key}">${a.name}</option>`).join("");
     if(!adv.length){
@@ -766,11 +812,27 @@ function renderMap(f,t){
         </select></div>`;
     }
     html+=`</div>`;
+    // об'єднання категорій Google: UA/RU-фіди та старі назви після перейменування -> одна категорія
+    const rawG=(GRAW&&GRAW.GCAT&&GRAW.GCAT[src])||{}, al=GALIAS[src]||{};
+    const rawKeys=Object.keys(rawG).sort((a,b)=>String(rawG[a].name||a).localeCompare(String(rawG[b].name||b),"uk"));
+    if(rawKeys.length && !isFbSrc(src)){
+      const esc=x=>String(x).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+      html+=`<div class="shop"><h2>${shopTitle(src)} <span class="t">об'єднання категорій Google — UA/RU та стара назва після перейменування → одна категорія (бюджет сумується)</span></h2>`;
+      for(const k of rawKeys){ const tot=sumCost(rawG[k],null,null);
+        const ds=Object.keys(rawG[k]).filter(d=>d!=="name").sort();
+        const o2=rawKeys.filter(x=>x!==k).map(x=>`<option value="${esc(x)}"${al[k]===x?" selected":""}>${esc(rawG[x].name||x)}</option>`).join("");
+        html+=`<div class="maprow"><div class="gname">${esc(rawG[k].name||k)}</div>
+          <div class="gb">${fmt(tot)} ₴${ds.length?` · ${ds[0].slice(5)}–${ds[ds.length-1].slice(5)}`:""}</div>
+          <select data-gsrc="${esc(src)}" data-gk="${esc(k)}"><option value="">— окрема категорія —</option>${o2}</select></div>`;
+      }
+      html+=`</div>`;
+    }
   }
   el("mapView").innerHTML=html;
+  el("mapView").querySelectorAll("select[data-gk]").forEach(sel=>{ sel.onchange=()=>saveGAlias(sel.dataset.gsrc,sel.dataset.gk,sel.value); });
   const ab=el("autoBtn"); if(ab) ab.onclick=()=>autoMatchAll(false);
   const aab=el("autoAllBtn"); if(aab) aab.onclick=()=>autoMatchAll(true);
-  el("mapView").querySelectorAll("select").forEach(sel=>{
+  el("mapView").querySelectorAll("select[data-ok]").forEach(sel=>{
     const src=sel.dataset.src, ok=sel.dataset.ok;
     sel.value=(MAP[src]||{})[ok]||"";
     sel.onchange=()=>saveMap(src,ok,sel.value);
@@ -826,7 +888,7 @@ async function autoMatchAll(overwrite){
 }
 
 async function saveMap(src,ok,gKey){
-  MAP[src]=MAP[src]||{}; MAP[src][ok]=gKey||null;
+  MAP[src]=MAP[src]||{}; MAP[src][ok]=gKey||null; MAP_RAW[src]=MAP_RAW[src]||{}; MAP_RAW[src][ok]=gKey||null;
   el("status").textContent="Збереження…";
   try{
     await fetch(FB+"/shop-reports/ads-map2/"+enc(src)+".json",
