@@ -16,7 +16,7 @@ var REP_PAY_SRC = {
 };
 var repPayMd = {}, repPayC2 = null, repPayRet2 = null, repPaySkip = false, repPayLoadedNew = false;
 // ── Контроль версій серверних скриптів (shop-reports/versions/<job> пишуть самі скрипти при запуску) ──
-var REP_REQ_VER = { ads: "2026-11-09.2", mydrop: "2026-11-07.1" };
+var REP_REQ_VER = { ads: "2026-11-17.1", mydrop: "2026-11-07.1" };
 async function repPayVersionBanner(el){
   var v = (await fbRestGet("shop-reports/versions")) || {};
   var bad = [];
@@ -49,6 +49,7 @@ window.repRenderPayStats = async function(){
   await repPayLoad(srcs);
   var rg = repGetDateRange() || [null, null];
   var f = rg[0] ? repYmd(rg[0]) : "0000-00-00", t = rg[1] ? repYmd(rg[1]) : "9999-99-99";
+  var SELF = {};   // «Сами оформили» (SalesDrive) по магазину: ми / КЦ / без даних — серед АПРУВНУТИХ
   var G = { deposit: { n: 0, ap: 0, sold: 0, ref: 0, dep: 0 }, full: { n: 0, ap: 0, sold: 0, ref: 0 }, cod: { n: 0, ap: 0, sold: 0, ref: 0 } };
   srcs.forEach(function(s){
     var tree = repPayMd[s] || {};
@@ -57,6 +58,8 @@ window.repRenderPayStats = async function(){
         var c = repPayC2[oid] || {}; var pay = c.pay || "cod"; var dn = +c.dn || 0;
         var dep = +c.dep || (o.info && +o.info.dep) || 0;
         var ap = +o.approved ? 1 : 0, nc = +o.notCounted ? 1 : 0, sold = +o.sales ? 1 : 0, ref = +o.refused ? 1 : 0;
+        if (ap){ var S = SELF[s] || (SELF[s] = { we: 0, kc: 0, na: 0 });
+          if (c.self === 1 || c.self === "1") S.we++; else if (c.self === 0 || c.self === "0") S.kc++; else S.na++; }
         if (!ap && !nc) continue;                     // новий / недозвон / в роботі — у картки не входять
         var isDep = (pay === "deposit") || (dn && nc);
         var g = isDep ? G.deposit : (pay === "full" ? G.full : G.cod);
@@ -86,6 +89,7 @@ window.repRenderPayStats = async function(){
     card('Задаток', G.deposit, G.deposit.dep ? cell(fmt(G.deposit.dep) + ' ₴', 'сума задатків') : '') +
     card('Повна оплата', G.full, '') +
     card('Накладений платіж', G.cod, '') +
+    repSelfCard(SELF, srcs) +
     '<div class="kpi"><div class="pay-head"><div><div class="kpi-lbl">Повернення</div><div class="kpi-val" style="color:var(--red)">' + fmt(rCount) + ' <span style="font-size:12px;color:var(--text-muted)">зак.</span></div></div></div><div class="pay-grid" style="margin-top:28px">' + cell(fmt(rSum) + ' ₴', 'сума повернень') + cell(rCount ? fmt(Math.round(rSum / rCount)) + ' ₴' : '—', 'середній чек') + cell('Google', 'джерело') + '</div></div>';
   var hint = document.getElementById("rep-paytype-hint");
   if (hint) hint.textContent = "По обраних магазинах (статуси MyDrop). Апрув = апрув-статуси; «не апрув» = «Не учитываем»; забрали = продажа; «не забрали» = відмова; в дорозі = решта апрувнутих. Викуп від апрув = (апрув − не забрали) ÷ апрув («в дорозі» рахуються як забрані); по завершених = забрали ÷ (забрали + не забрали). Задаток — «завдаток» + сума, або слово «завдаток» і статус «Не учитываем». Повна оплата — поле «Оплачено» в SalesDrive, решта — накладений платіж. Повернення — з Google-таблиці (усі магазини).";
@@ -93,6 +97,26 @@ window.repRenderPayStats = async function(){
   if (repPayLoadedNew && !repPayAllSelected()){ repPayLoadedNew = false; setTimeout(function(){ try{ repRenderAll(); }catch(e){} }, 0); }
   repPayLoadedNew = false;
 };
+// ── «Хто оформив»: ми (галочка «Сами оформили» в SalesDrive) / КЦ (без галочки), % від апруву, по магазинах ──
+function repSelfName(src){ for (var k in REP_PAY_SRC){ if (REP_PAY_SRC[k] === src) return k.split("|")[0]; } return src; }
+function repSelfCard(SELF, srcs){
+  var T = { we: 0, kc: 0, na: 0 };
+  var pc = function(n, ap){ return ap ? Math.round(n / ap * 100) + "%" : "—"; };
+  var rows = srcs.map(function(s){ var S = SELF[s] || { we: 0, kc: 0, na: 0 }; var ap = S.we + S.kc + S.na;
+    T.we += S.we; T.kc += S.kc; T.na += S.na; if (!ap) return "";
+    return '<tr><td style="padding:3px 6px 3px 0">' + repSelfName(s) + '</td><td style="text-align:right;padding:3px 6px">' + fmt(ap) + '</td>'
+      + '<td style="text-align:right;padding:3px 6px;color:var(--green)"><b>' + fmt(S.we) + '</b> <span style="color:var(--text-muted)">' + pc(S.we, ap) + '</span></td>'
+      + '<td style="text-align:right;padding:3px 6px"><b>' + fmt(S.kc) + '</b> <span style="color:var(--text-muted)">' + pc(S.kc, ap) + '</span></td>'
+      + '<td style="text-align:right;padding:3px 0 3px 6px;color:var(--text-muted)">' + (S.na ? fmt(S.na) : '') + '</td></tr>'; }).join("");
+  var apT = T.we + T.kc + T.na;
+  return '<div class="kpi" id="rep-self-card" style="grid-column:span 2;min-width:0"><div class="pay-head"><div><div class="kpi-lbl">Хто оформив (від апруву)</div>'
+    + '<div class="kpi-val">ми ' + fmt(T.we) + ' <span style="font-size:13px;color:var(--text-muted)">' + pc(T.we, apT) + '</span> · КЦ ' + fmt(T.kc) + ' <span style="font-size:13px;color:var(--text-muted)">' + pc(T.kc, apT) + '</span></div></div>'
+    + '<div class="pay-bo"><div class="pay-bo-v">' + fmt(apT) + '</div><div class="pay-bo-l">апрув</div></div></div>'
+    + '<div class="pay-bar" title="ми / КЦ / без даних"><span style="width:' + (apT ? T.we / apT * 100 : 0) + '%;background:var(--green)"></span><span style="width:' + (apT ? T.kc / apT * 100 : 0) + '%;background:var(--blue,#3B6FD8)"></span></div>'
+    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em">'
+    + '<td>Магазин</td><td style="text-align:right">Апрув</td><td style="text-align:right">Оформили ми</td><td style="text-align:right">КЦ</td><td style="text-align:right">без даних</td></tr>' + rows + '</table></div>'
+    + '<div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.3">Ми = галочка «Сами оформили» в SalesDrive, КЦ = без галочки. % від апруву (статуси MyDrop). «Без даних» — заказ без пари в SalesDrive (немає номера) або ще не оброблений збирачем ' + REP_REQ_VER.ads + '.' + (T.na ? ' Ми + КЦ + без даних = апрув.' : ' Ми + КЦ = апрув.') + '</div></div>';
+}
 // ── Допродажі по обраних магазинах ──
 var repPayOrigUpsellFiltered = window.upsellFilteredOrders;
 window.upsellFilteredOrders = function(){
