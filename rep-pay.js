@@ -102,20 +102,22 @@ function repSelfName(src){ for (var k in REP_PAY_SRC){ if (REP_PAY_SRC[k] === sr
 function repSelfCard(SELF, srcs){
   var T = { we: 0, kc: 0, na: 0 };
   var pc = function(n, ap){ return ap ? Math.round(n / ap * 100) + "%" : "—"; };
-  var rows = srcs.map(function(s){ var S = SELF[s] || { we: 0, kc: 0, na: 0 }; var ap = S.we + S.kc + S.na;
+  // % ми / КЦ рахуємо від апрувів З ДАНИМИ (ми + КЦ); «без даних» — окремо, з часткою від усього апруву
+  var rows = srcs.map(function(s){ var S = SELF[s] || { we: 0, kc: 0, na: 0 }; var ap = S.we + S.kc + S.na, kn = S.we + S.kc;
     T.we += S.we; T.kc += S.kc; T.na += S.na; if (!ap) return "";
     return '<tr><td style="padding:3px 6px 3px 0">' + repSelfName(s) + '</td><td style="text-align:right;padding:3px 6px">' + fmt(ap) + '</td>'
-      + '<td style="text-align:right;padding:3px 6px;color:var(--green)"><b>' + fmt(S.we) + '</b> <span style="color:var(--text-muted)">' + pc(S.we, ap) + '</span></td>'
-      + '<td style="text-align:right;padding:3px 6px"><b>' + fmt(S.kc) + '</b> <span style="color:var(--text-muted)">' + pc(S.kc, ap) + '</span></td>'
-      + '<td style="text-align:right;padding:3px 0 3px 6px;color:var(--text-muted)">' + (S.na ? fmt(S.na) : '') + '</td></tr>'; }).join("");
-  var apT = T.we + T.kc + T.na;
+      + '<td style="text-align:right;padding:3px 6px;color:var(--green)"><b>' + fmt(S.we) + '</b> <span style="color:var(--text-muted)">' + pc(S.we, kn) + '</span></td>'
+      + '<td style="text-align:right;padding:3px 6px"><b>' + fmt(S.kc) + '</b> <span style="color:var(--text-muted)">' + pc(S.kc, kn) + '</span></td>'
+      + '<td style="text-align:right;padding:3px 0 3px 6px;color:var(--text-muted)">' + (S.na ? fmt(S.na) + ' (' + pc(S.na, ap) + ')' : '') + '</td></tr>'; }).join("");
+  var apT = T.we + T.kc + T.na, knT = T.we + T.kc;
   return '<div class="kpi" id="rep-self-card" style="grid-column:span 2;min-width:0"><div class="pay-head"><div><div class="kpi-lbl">Хто оформив (від апруву)</div>'
-    + '<div class="kpi-val">ми ' + fmt(T.we) + ' <span style="font-size:13px;color:var(--text-muted)">' + pc(T.we, apT) + '</span> · КЦ ' + fmt(T.kc) + ' <span style="font-size:13px;color:var(--text-muted)">' + pc(T.kc, apT) + '</span></div></div>'
+    + '<div class="kpi-val">ми ' + fmt(T.we) + ' <span style="font-size:13px;color:var(--text-muted)">' + pc(T.we, knT) + '</span> · КЦ ' + fmt(T.kc) + ' <span style="font-size:13px;color:var(--text-muted)">' + pc(T.kc, knT) + '</span></div>'
+    + (T.na ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">без даних ' + fmt(T.na) + ' з ' + fmt(apT) + ' (' + pc(T.na, apT) + ')</div>' : '') + '</div>'
     + '<div class="pay-bo"><div class="pay-bo-v">' + fmt(apT) + '</div><div class="pay-bo-l">апрув</div></div></div>'
     + '<div class="pay-bar" title="ми / КЦ / без даних"><span style="width:' + (apT ? T.we / apT * 100 : 0) + '%;background:var(--green)"></span><span style="width:' + (apT ? T.kc / apT * 100 : 0) + '%;background:var(--blue,#3B6FD8)"></span></div>'
     + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em">'
     + '<td>Магазин</td><td style="text-align:right">Апрув</td><td style="text-align:right">Оформили ми</td><td style="text-align:right">КЦ</td><td style="text-align:right">без даних</td></tr>' + rows + '</table></div>'
-    + '<div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.3">Ми = галочка «Сами оформили» в SalesDrive, КЦ = без галочки. % від апруву (статуси MyDrop). «Без даних» — заказ без пари в SalesDrive (немає номера) або ще не оброблений збирачем ' + REP_REQ_VER.ads + '.' + (T.na ? ' Ми + КЦ + без даних = апрув.' : ' Ми + КЦ = апрув.') + '</div></div>';
+    + '<div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.3">Ми = галочка «Сами оформили» в SalesDrive, КЦ = без галочки. % ми / КЦ — від апрувів з даними (ми + КЦ). «Без даних» — заказ без пари в SalesDrive (немає номера) або старший за вікно збирача: признак пишеться з 07.11.2026, раніші дні не заповнені. Ми + КЦ + без даних = апрув (статуси MyDrop).</div></div>';
 }
 // ── Допродажі по обраних магазинах ──
 var repPayOrigUpsellFiltered = window.upsellFilteredOrders;
