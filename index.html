@@ -1787,11 +1787,11 @@ function repRenderDaysTableHtml(dayRows){
   const fmtDate = d => String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0");
   const filledRows = dayRows.filter(d=>d.budget>0||d.leads>0||d.approved>0);
   const n = filledRows.length || 1;
-  const avg = filledRows.reduce((a,d)=>({budget:a.budget+d.budget,leads:a.leads+d.leads,approved:a.approved+d.approved,
+  const avg = filledRows.reduce((a,d)=>({budget:a.budget+d.budget,leads:a.leads+d.leads,approved:a.approved+d.approved,notCounted:a.notCounted+(d.notCounted||0),
     approvalRate:a.approvalRate+d.approvalRate,cpl:a.cpl+d.cpl,cpa:a.cpa+d.cpa,marginPotential:a.marginPotential+d.marginPotential,
     realMargin:a.realMargin+d.realMargin,picked:a.picked+d.picked,returns:a.returns+d.returns,returnCost:a.returnCost+d.returnCost,
     kc:a.kc+d.kc,costs:a.costs+d.costs,net:a.net+d.net,roas:a.roas+d.roas,roi:a.roi+d.roi}),
-    {budget:0,leads:0,approved:0,approvalRate:0,cpl:0,cpa:0,marginPotential:0,realMargin:0,picked:0,returns:0,returnCost:0,kc:0,costs:0,net:0,roas:0,roi:0});
+    {budget:0,leads:0,approved:0,notCounted:0,approvalRate:0,cpl:0,cpa:0,marginPotential:0,realMargin:0,picked:0,returns:0,returnCost:0,kc:0,costs:0,net:0,roas:0,roi:0});
   Object.keys(avg).forEach(k=>avg[k]=avg[k]/n);
 
   return `
@@ -1799,7 +1799,7 @@ function repRenderDaysTableHtml(dayRows){
       <table class="days-table">
         <thead><tr>
           <th style="text-align:left">Дата</th>
-          <th>Бюджет</th><th>Заявки</th><th>Апрув</th><th>% Апрув</th>
+          <th>Бюджет</th><th>Заявки</th><th>Апрув</th><th>% Апрув</th><th title="Статус «Не учитываем» у MyDrop">Нелід</th>
           <th>Ц.заявки</th><th>Ц.апрув</th><th>Маржа (CRM)</th>
           <th>Забрали</th><th>Поверн.</th><th>КЦ</th><th>Витрати</th>
           <th>Чистими</th><th>ROAS</th><th>ROI</th>
@@ -1815,6 +1815,7 @@ function repRenderDaysTableHtml(dayRows){
             <td class="dc-blue">${fmt(d.leads)}</td>
             <td class="dc-blue">${fmt(d.approved)}</td>
             <td class="dc-apv">${d.approvalRate.toFixed(1)}%</td>
+            <td style="color:#B45309">${fmt(d.notCounted||0)} <span style="opacity:.6">(${d.leads?((d.notCounted||0)/d.leads*100).toFixed(0):0}%)</span></td>
             <td class="dc-cost">${fmt(d.cpl)}</td>
             <td class="dc-cost">${fmt(d.cpa)}</td>
             <td class="dc-green">${fmt(d.realMargin)}</td>
@@ -1833,6 +1834,7 @@ function repRenderDaysTableHtml(dayRows){
           <td class="dc-blue">${fmt(avg.leads)}</td>
           <td class="dc-blue">${fmt(avg.approved)}</td>
           <td class="dc-apv">${avg.approvalRate.toFixed(1)}%</td>
+          <td style="color:#B45309">${fmt(avg.notCounted)} <span style="opacity:.6">(${avg.leads?(avg.notCounted/avg.leads*100).toFixed(0):0}%)</span></td>
           <td class="dc-cost">${fmt(avg.cpl)}</td>
           <td class="dc-cost">${fmt(avg.cpa)}</td>
           <td class="dc-green">${fmt(avg.realMargin)}</td>
@@ -2031,7 +2033,7 @@ function repRenderAll(){
 
   document.getElementById("rep-kpis").innerHTML = `
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_budget">Бюджет</span></div><div class="kpi-val">${fmt(T.budget)} ₴</div><div class="kpi-sub">${uniqueDays} днів даних</div>${miniBudget}</div>
-    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_leads">Заявки</span></div><div class="kpi-val">${fmt(T.leads)}</div><div class="kpi-sub">нові: ${fmt(T.novi)} · в роботі: ${fmt(T.inWork)} · не апрув: ${fmt(T.notApproved)}${T.duplicates?` · дублі: ${fmt(T.duplicates)}`:''}${noSrcT?`<br><span style="color:var(--text-faint)" title="Замовлення без джерела трафіку (статус Нові). Входять у тотал заявок; коли в CRM проставиш джерело — перейдуть у відповідний магазин.">з них без джерела: ${fmt(noSrcT)}</span>`:''}</div>${miniLeads}</div>
+    <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_leads">Заявки</span></div><div class="kpi-val">${fmt(T.leads)}</div><div class="kpi-sub">нові: ${fmt(T.novi)} · в роботі: ${fmt(T.inWork)} · не апрув: ${fmt(T.notApproved)} · <span title="Нелід — статус «Не учитываем» у MyDrop">нелід: <b style="color:#B45309">${fmt(T.notCounted)}</b> (${T.leads?(T.notCounted/T.leads*100).toFixed(1):'0.0'}%)</span>${T.duplicates?` · дублі: ${fmt(T.duplicates)}`:''}${noSrcT?`<br><span style="color:var(--text-faint)" title="Замовлення без джерела трафіку (статус Нові). Входять у тотал заявок; коли в CRM проставиш джерело — перейдуть у відповідний магазин.">з них без джерела: ${fmt(noSrcT)}</span>`:''}</div>${miniLeads}</div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="rep_approved">Апрув</span></div><div class="kpi-val">${fmt(T.approved)}</div><div class="kpi-sub"><span class="tip-label" data-tip="rep_apprate">% Апрув: ${fP(approvalRate/100)}</span></div>${miniAppr}</div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="cpl">Ціна заявки</span></div><div class="kpi-val">${fmt(cplT)} ₴</div>${miniCpl}</div>
     <div class="kpi"><div class="kpi-lbl"><span class="tip-label" data-tip="cpa">Ціна апрув</span></div><div class="kpi-val">${fmt(cpaT)} ₴</div>${miniCpa}</div>
@@ -2078,6 +2080,7 @@ function repRenderAll(){
         <span title="Нові, ще не взяті в роботу: статуси Новий/Новые/Хорошоп">Нові: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.novi||0)}</b></span>
         <span title="Активно в обробці: тільки Недозвон і Вайбер/тг">В роботі: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.inWork)}</b></span>
         <span>% Апрув: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${s.approvalRate.toFixed(1)}%</b></span>
+        <span title="Нелід — заказ у статусі «Не учитываем» (MyDrop). У дужках — % від заявок">Нелід: <b style="color:#B45309;font-family:'JetBrains Mono',monospace">${fmt(s.notCounted||0)}</b> (${s.leads?((s.notCounted||0)/s.leads*100).toFixed(1):'0.0'}%)</span>
         <span>Ціна заявки: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.cpl)}</b></span>
         <span>Ціна апрув: <b style="color:var(--text);font-family:'JetBrains Mono',monospace">${fmt(s.cpa)}</b></span>
       </div>
